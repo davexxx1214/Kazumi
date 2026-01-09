@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:canvas_danmaku/models/danmaku_content_item.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/bean/appbar/sys_app_bar.dart';
 import 'package:kazumi/pages/player/player_controller.dart';
@@ -9,6 +10,7 @@ import 'package:kazumi/pages/webview/webview_item.dart';
 import 'package:kazumi/pages/webview/webview_controller.dart';
 import 'package:kazumi/pages/history/history_controller.dart';
 import 'package:kazumi/utils/logger.dart';
+import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/pages/player/player_item.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:hive_ce/hive.dart';
@@ -759,16 +761,19 @@ class _VideoPageState extends State<VideoPage>
         int count = 1;
         for (var urlItem in road.data) {
           int count0 = count;
-          cardList.add(Container(
-            margin: const EdgeInsets.only(bottom: 4), // 改为bottom间距
+          final bool isCurrent = count0 == videoPageController.currentEpisode &&
+              videoPageController.currentRoad == currentRoad;
+          
+          // TV版本使用Focus包装以支持遥控器导航
+          Widget card = Container(
+            margin: const EdgeInsets.only(bottom: 4),
             child: Material(
               color: Theme.of(context).colorScheme.onInverseSurface,
               borderRadius: BorderRadius.circular(6),
               clipBehavior: Clip.hardEdge,
               child: InkWell(
                 onTap: () async {
-                  if (count0 == videoPageController.currentEpisode &&
-                      videoPageController.currentRoad == currentRoad) {
+                  if (isCurrent) {
                     return;
                   }
                   KazumiLogger().i('VideoPageController: video URL is $urlItem');
@@ -783,9 +788,7 @@ class _VideoPageState extends State<VideoPage>
                     children: <Widget>[
                       Row(
                         children: [
-                          if (count0 == (videoPageController.currentEpisode) &&
-                              currentRoad ==
-                                  videoPageController.currentRoad) ...<Widget>[
+                          if (isCurrent) ...<Widget>[
                             Image.asset(
                               'assets/images/playing.gif',
                               color: Theme.of(context).colorScheme.primary,
@@ -800,11 +803,7 @@ class _VideoPageState extends State<VideoPage>
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                                 fontSize: 13,
-                                color: (count0 ==
-                                            videoPageController
-                                                .currentEpisode &&
-                                        currentRoad ==
-                                            videoPageController.currentRoad)
+                                color: isCurrent
                                     ? Theme.of(context).colorScheme.primary
                                     : Theme.of(context).colorScheme.onSurface),
                           )),
@@ -817,7 +816,105 @@ class _VideoPageState extends State<VideoPage>
                 ),
               ),
             ),
-          ));
+          );
+          
+          // TV版本：用Focus包装以支持遥控器方向键导航和确定键选择
+          if (isTV) {
+            card = Focus(
+              autofocus: isCurrent, // 当前正在播放的剧集自动获取焦点
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent) {
+                  if (event.logicalKey == LogicalKeyboardKey.select ||
+                      event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.gameButtonA) {
+                    // 确定键：播放选中的剧集
+                    if (!isCurrent) {
+                      KazumiLogger().i('VideoPageController: video URL is $urlItem');
+                      closeTabBodyAnimated();
+                      changeEpisode(count0, currentRoad: currentRoad);
+                    }
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: Builder(
+                builder: (context) {
+                  final bool hasFocus = Focus.of(context).hasFocus;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      border: hasFocus
+                          ? Border.all(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            )
+                          : null,
+                    ),
+                    child: Material(
+                      color: hasFocus
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).colorScheme.onInverseSurface,
+                      borderRadius: BorderRadius.circular(6),
+                      clipBehavior: Clip.hardEdge,
+                      child: InkWell(
+                        onTap: () async {
+                          if (isCurrent) {
+                            return;
+                          }
+                          KazumiLogger().i('VideoPageController: video URL is $urlItem');
+                          closeTabBodyAnimated();
+                          changeEpisode(count0, currentRoad: currentRoad);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Row(
+                                children: [
+                                  if (isCurrent) ...<Widget>[
+                                    Image.asset(
+                                      'assets/images/playing.gif',
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      height: 12,
+                                    ),
+                                    const SizedBox(width: 6)
+                                  ],
+                                  Expanded(
+                                      child: Text(
+                                    road.identifier[count0 - 1],
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: isCurrent || hasFocus
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .onSurface),
+                                  )),
+                                  const SizedBox(width: 2),
+                                ],
+                              ),
+                              const SizedBox(height: 3),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          }
+          
+          cardList.add(card);
           count++;
         }
       }
