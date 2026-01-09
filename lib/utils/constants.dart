@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:kazumi/request/api.dart';
 
+/// 是否为 TV 版本（通过 --dart-define=IS_TV=true 构建时传入）
+const bool isTV = bool.fromEnvironment('IS_TV', defaultValue: false);
+
 class StyleString {
   static const double cardSpace = 8;
   static const double safeSpace = 12;
@@ -206,26 +209,48 @@ final List<String> defaultAnimeTags = const [
 ];
 
 // 播放器默认快捷键
-  final Map<String, List<String>> defaultShortcuts = const {
-    'playorpause': [' '],
-    'forward': ['Arrow Right'],
-    'rewind': ['Arrow Left'],
-    'next': ['N'],
-    'prev': ['P'],
-    'volumeup': ['Arrow Up'],
-    'volumedown': ['Arrow Down'],
-    'togglemute': ['M'],
-    'fullscreen': ['F'],
-    'exitfullscreen': ['Escape'],
-    'toggledanmaku': ['D'],
-    'screenshot': ['S'],
-    'skip': ['K'],
-    'speed1': ['1'],
-    'speed2': ['2'],
-    'speed3': ['3'],
-    'speedup': ['X'],
-    'speeddown': ['Z'],
-  };
+final Map<String, List<String>> defaultShortcuts = const {
+  'playorpause': [' '],
+  'forward': ['Arrow Right'],
+  'rewind': ['Arrow Left'],
+  'next': ['N'],
+  'prev': ['P'],
+  'volumeup': ['Arrow Up'],
+  'volumedown': ['Arrow Down'],
+  'togglemute': ['M'],
+  'fullscreen': ['F'],
+  'exitfullscreen': ['Escape'],
+  'toggledanmaku': ['D'],
+  'screenshot': ['S'],
+  'skip': ['K'],
+  'speed1': ['1'],
+  'speed2': ['2'],
+  'speed3': ['3'],
+  'speedup': ['X'],
+  'speeddown': ['Z'],
+};
+
+// TV版本播放器快捷键（取消方向键的默认功能，使用确定键控制播放）
+final Map<String, List<String>> tvShortcuts = const {
+  'playorpause': [' ', 'Enter', 'Select'], // TV遥控器确定键
+  'forward': [], // 取消右键快进
+  'rewind': [], // 取消左键快退
+  'next': ['N'],
+  'prev': ['P'],
+  'volumeup': [], // 取消上键音量
+  'volumedown': [], // 取消下键音量
+  'togglemute': ['M'],
+  'fullscreen': ['F'],
+  'exitfullscreen': ['Escape'],
+  'toggledanmaku': ['D'],
+  'screenshot': ['S'],
+  'skip': ['K'],
+  'speed1': ['1'],
+  'speed2': ['2'],
+  'speed3': ['3'],
+  'speedup': ['X'],
+  'speeddown': ['Z'],
+};
 
 // 键位别名
   final Map<String, String> keyAliases = {

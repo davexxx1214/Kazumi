@@ -25,7 +25,7 @@ jobs:
         run: flutter pub get
 
       - name: Build armeabi-v7a APK
-        run: flutter build apk --release --target-platform android-arm # 专门指定 arm v7 架构
+        run: flutter build apk --release --target-platform android-arm --dart-define=IS_TV=true # 专门指定 arm v7 架构，并标记为TV版本
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

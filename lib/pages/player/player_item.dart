@@ -136,7 +136,9 @@ class _PlayerItemState extends State<PlayerItem>
 
   void _loadShortcuts() {
     keyboardShortcuts = {};
-    defaultShortcuts.forEach((key, defaultValue) {
+    // TV版本使用专用快捷键配置（取消方向键的默认功能）
+    final shortcuts = isTV ? tvShortcuts : defaultShortcuts;
+    shortcuts.forEach((key, defaultValue) {
       keyboardShortcuts[key] = setting
           .get('shortcut_$key', defaultValue: defaultValue)
           .cast<String>();
@@ -148,7 +150,7 @@ class _PlayerItemState extends State<PlayerItem>
     keyboardActionsNeedLongPress = ["forward"];
     //快捷键功能对应表
     keyboardActions = {
-      'playorpause': () => playerController.playOrPause(),
+      'playorpause': () => _handleTVPlayOrPause(),
       'forward': () async => handleShortcutForwardDown(),
       'rewind': () async => handleShortcutRewind(),
       'next': () async => handlePreNextEpisode('next'),
@@ -182,6 +184,17 @@ class _PlayerItemState extends State<PlayerItem>
   }
   //快捷键按下
   bool handleShortcutDown(String keyLabel) {
+    // TV版本：当控制UI显示时，不拦截方向键，让Flutter焦点系统处理UI导航
+    if (isTV && playerController.showVideoController) {
+      final isArrowKey = keyLabel == 'Arrow Up' || 
+                         keyLabel == 'Arrow Down' || 
+                         keyLabel == 'Arrow Left' || 
+                         keyLabel == 'Arrow Right';
+      if (isArrowKey) {
+        return false; // 不拦截，让焦点系统处理
+      }
+    }
+    
     for (final entry in keyboardShortcuts.entries) {
       final func = entry.key;
       final keys = entry.value;
@@ -314,6 +327,25 @@ class _PlayerItemState extends State<PlayerItem>
       } else {
         displayVideoController();
       }
+    }
+  }
+
+  /// TV版本的播放/暂停处理
+  /// 按确定键时：暂停并显示控制UI，或隐藏UI并继续播放
+  void _handleTVPlayOrPause() {
+    if (isTV) {
+      if (playerController.playing) {
+        // 正在播放 -> 暂停并显示控制UI
+        playerController.pause();
+        displayVideoController();
+      } else {
+        // 已暂停 -> 隐藏控制UI并继续播放
+        hideVideoController();
+        playerController.play();
+      }
+    } else {
+      // 非TV版本，正常切换播放/暂停
+      playerController.playOrPause();
     }
   }
 
@@ -1271,8 +1303,9 @@ class _PlayerItemState extends State<PlayerItem>
     webDavEnable = setting.get(SettingBoxKey.webDavEnable, defaultValue: false);
     webDavEnableHistory =
         setting.get(SettingBoxKey.webDavEnableHistory, defaultValue: false);
+    // TV版本默认开启弹幕
     playerController.danmakuOn =
-        setting.get(SettingBoxKey.danmakuEnabledByDefault, defaultValue: false);
+        setting.get(SettingBoxKey.danmakuEnabledByDefault, defaultValue: isTV);
     _border = setting.get(SettingBoxKey.danmakuBorder, defaultValue: true);
     _opacity = setting.get(SettingBoxKey.danmakuOpacity, defaultValue: 1.0);
     _fontSize = setting.get(SettingBoxKey.danmakuFontSize,
@@ -1391,7 +1424,16 @@ class _PlayerItemState extends State<PlayerItem>
                               final keyLabel = event.logicalKey.keyLabel.isNotEmpty
                                 ? event.logicalKey.keyLabel
                                 : event.logicalKey.debugName ?? '';
+                              
+                              // TV遥控器菜单键：打开剧集列表
                               if (event is KeyDownEvent) {
+                                if (event.logicalKey == LogicalKeyboardKey.contextMenu ||
+                                    event.logicalKey == LogicalKeyboardKey.f10 ||
+                                    keyLabel == 'Menu') {
+                                  videoPageController.showTabBody = !videoPageController.showTabBody;
+                                  widget.openMenu();
+                                  return KeyEventResult.handled;
+                                }
                                 handled = handleShortcutDown(keyLabel);
                               } else if (event is KeyRepeatEvent) {
                                 handled = handleShortcutLongPress(keyLabel,"Repeat");
