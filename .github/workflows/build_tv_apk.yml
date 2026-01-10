@@ -58,3 +58,4 @@ jobs:
         with:
           name: Kazumi-TV-v7a
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30  # 保留30天（可设置1-90天，节省空间）

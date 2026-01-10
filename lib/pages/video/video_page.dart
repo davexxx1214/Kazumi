@@ -282,7 +282,17 @@ class _VideoPageState extends State<VideoPage>
       videoPageController.isPip = false;
       return;
     }
+    // TV版本：优先检查是否需要关闭侧边菜单
+    if (isTV && videoPageController.showTabBody) {
+      closeTabBodyAnimated();
+      return;
+    }
     if (videoPageController.isFullscreen && !Utils.isTablet()) {
+      // TV版本：全屏模式下按返回直接退出播放器
+      if (isTV) {
+        Navigator.of(context).pop();
+        return;
+      }
       menuJumpToCurrentEpisode();
       await Utils.exitFullScreen();
       videoPageController.showTabBody = false;

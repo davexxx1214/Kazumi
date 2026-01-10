@@ -410,12 +410,11 @@ class _PlayerItemState extends State<PlayerItem>
   KeyEventResult _handleTVBackKey() {
     switch (_tvMode) {
       case TVPlayerMode.pauseMenu:
-        // 暂停菜单模式 -> 回到全屏模式，恢复播放
+        // 暂停菜单模式 -> 回到全屏模式（不自动恢复播放）
         setState(() {
           _tvMode = TVPlayerMode.fullscreen;
         });
         hideVideoController();
-        playerController.play();
         return KeyEventResult.handled;
       case TVPlayerMode.sideMenu:
         // 右侧菜单模式 -> 回到全屏模式
@@ -454,15 +453,10 @@ class _PlayerItemState extends State<PlayerItem>
   KeyEventResult _handleTVSelectKey() {
     switch (_tvMode) {
       case TVPlayerMode.fullscreen:
+        // 全屏模式：确定键切换播放/暂停
         if (playerController.playing) {
-          // 正在播放 -> 暂停并进入暂停菜单模式
           playerController.pause();
-          displayVideoController();
-          setState(() {
-            _tvMode = TVPlayerMode.pauseMenu;
-          });
         } else {
-          // 已暂停但在全屏模式 -> 恢复播放
           playerController.play();
         }
         return KeyEventResult.handled;
@@ -1507,7 +1501,10 @@ class _PlayerItemState extends State<PlayerItem>
     autoPlayNext = setting.get(SettingBoxKey.autoPlayNext, defaultValue: true);
     playerTimer = getPlayerTimer();
     windowManager.addListener(this);
-    displayVideoController();
+    // TV版本：启动时直接进入全屏播放模式，不显示控制面板
+    if (!isTV) {
+      displayVideoController();
+    }
   }
 
   @override
