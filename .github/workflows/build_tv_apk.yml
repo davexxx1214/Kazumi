@@ -1,14 +1,13 @@
 name: Build TV APK (v7a)
 on:
   workflow_dispatch: # 允许手动触发构建
+  push:              # Push 时自动触发
+    branches:
+      - main
+      - tv-*         # 以 tv- 开头的分支也会触发
   pull_request:      # PR 时自动触发
     branches:
-      - main         # 目标分支为 main 时触发
-    paths:           # 可选：只有这些路径变更时才触发（节省资源）
-      - 'lib/**'
-      - 'android/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/build_tv_apk.yml'
+      - main
 
 jobs:
   build:
