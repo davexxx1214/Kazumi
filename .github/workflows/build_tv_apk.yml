@@ -1,6 +1,14 @@
 name: Build TV APK (v7a)
 on:
   workflow_dispatch: # 允许手动触发构建
+  pull_request:      # PR 时自动触发
+    branches:
+      - main         # 目标分支为 main 时触发
+    paths:           # 可选：只有这些路径变更时才触发（节省资源）
+      - 'lib/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/build_tv_apk.yml'
 
 jobs:
   build:
@@ -23,6 +31,21 @@ jobs:
 
       - name: Install Dependencies
         run: flutter pub get
+
+      # 配置签名密钥（需要在 GitHub Secrets 中设置）
+      - name: Setup Signing Key
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/keystore.jks
+          echo "storeFile=keystore.jks" > android/key.properties
+          echo "keyAlias=$KEY_ALIAS" >> android/key.properties
+          echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
+          echo "storePassword=$STORE_PASSWORD" >> android/key.properties
 
       - name: Build armeabi-v7a APK
         run: flutter build apk --release --target-platform android-arm --dart-define=IS_TV=true # 专门指定 arm v7 架构，并标记为TV版本
