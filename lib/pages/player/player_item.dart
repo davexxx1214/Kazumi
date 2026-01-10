@@ -121,7 +121,11 @@ class _PlayerItemState extends State<PlayerItem>
   double lastPlayerSpeed = 1.0;
   int episodeNum = 0;
 
+  // TV模式状态（仅TV版本使用）
+  TVPlayerMode _tvMode = TVPlayerMode.fullscreen;
+
   late mobx.ReactionDisposer _fullscreenListener;
+  mobx.ReactionDisposer? _tvModeListener;
 
   /// 处理 Android/iOS 应用后台或熄屏
   @override
@@ -136,7 +140,7 @@ class _PlayerItemState extends State<PlayerItem>
 
   void _loadShortcuts() {
     keyboardShortcuts = {};
-    // TV版本使用专用快捷键配置（取消方向键的默认功能）
+    // TV版本使用专用快捷键配置
     final shortcuts = isTV ? tvShortcuts : defaultShortcuts;
     shortcuts.forEach((key, defaultValue) {
       keyboardShortcuts[key] = setting
@@ -184,14 +188,16 @@ class _PlayerItemState extends State<PlayerItem>
   }
   //快捷键按下
   bool handleShortcutDown(String keyLabel) {
-    // TV版本：当控制UI显示时，不拦截方向键，让Flutter焦点系统处理UI导航
-    if (isTV && playerController.showVideoController) {
+    // TV版本：根据当前模式决定方向键行为
+    if (isTV) {
       final isArrowKey = keyLabel == 'Arrow Up' || 
                          keyLabel == 'Arrow Down' || 
                          keyLabel == 'Arrow Left' || 
                          keyLabel == 'Arrow Right';
-      if (isArrowKey) {
-        return false; // 不拦截，让焦点系统处理
+      
+      // 暂停菜单模式或右侧菜单模式：方向键用于UI导航，不处理快捷键
+      if (_tvMode != TVPlayerMode.fullscreen && isArrowKey) {
+        return false; // 不拦截，让焦点系统处理UI导航
       }
     }
     
@@ -330,22 +336,160 @@ class _PlayerItemState extends State<PlayerItem>
     }
   }
 
-  /// TV版本的播放/暂停处理
-  /// 按确定键时：暂停并显示控制UI，或隐藏UI并继续播放
+  /// TV版本的播放/暂停处理（空格键）
   void _handleTVPlayOrPause() {
-    if (isTV) {
-      if (playerController.playing) {
-        // 正在播放 -> 暂停并显示控制UI
-        playerController.pause();
-        displayVideoController();
+    playerController.playOrPause();
+  }
+
+  /// TV遥控器事件处理
+  /// 三种模式：全屏模式、暂停菜单模式、右侧菜单模式
+  KeyEventResult _handleTVRemoteEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) {
+      // 处理长按快进
+      final keyLabel = event.logicalKey.keyLabel.isNotEmpty
+          ? event.logicalKey.keyLabel
+          : event.logicalKey.debugName ?? '';
+      if (event is KeyRepeatEvent) {
+        handleShortcutLongPress(keyLabel, "Repeat");
+      } else if (event is KeyUpEvent) {
+        handleShortcutLongPress(keyLabel, "Up");
+      }
+      return KeyEventResult.handled;
+    }
+
+    final key = event.logicalKey;
+    final keyLabel = key.keyLabel.isNotEmpty ? key.keyLabel : key.debugName ?? '';
+
+    // 返回键处理
+    if (key == LogicalKeyboardKey.escape || 
+        key == LogicalKeyboardKey.goBack ||
+        keyLabel == 'Go Back') {
+      return _handleTVBackKey();
+    }
+
+    // 菜单键：切换右侧剧集列表
+    if (key == LogicalKeyboardKey.contextMenu ||
+        key == LogicalKeyboardKey.f10 ||
+        keyLabel == 'Menu') {
+      return _handleTVMenuKey();
+    }
+
+    // 确定键处理
+    if (key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.gameButtonA ||
+        keyLabel == 'Select') {
+      return _handleTVSelectKey();
+    }
+
+    // 方向键处理：根据模式决定行为
+    final isArrowKey = key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.arrowDown ||
+        key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight;
+
+    if (isArrowKey) {
+      if (_tvMode == TVPlayerMode.fullscreen) {
+        // 全屏模式：方向键控制音量/快进快退
+        return _handleTVArrowKeyInFullscreen(key);
       } else {
-        // 已暂停 -> 隐藏控制UI并继续播放
+        // 菜单模式：让焦点系统处理UI导航
+        return KeyEventResult.ignored;
+      }
+    }
+
+    // 其他键：使用默认快捷键处理
+    if (handleShortcutDown(keyLabel)) {
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  /// TV返回键处理
+  KeyEventResult _handleTVBackKey() {
+    switch (_tvMode) {
+      case TVPlayerMode.pauseMenu:
+        // 暂停菜单模式 -> 回到全屏模式，恢复播放
+        setState(() {
+          _tvMode = TVPlayerMode.fullscreen;
+        });
         hideVideoController();
         playerController.play();
-      }
+        return KeyEventResult.handled;
+      case TVPlayerMode.sideMenu:
+        // 右侧菜单模式 -> 回到全屏模式
+        setState(() {
+          _tvMode = TVPlayerMode.fullscreen;
+        });
+        videoPageController.showTabBody = false;
+        return KeyEventResult.handled;
+      case TVPlayerMode.fullscreen:
+        // 全屏模式 -> 交给外部处理（退出播放器等）
+        widget.onBackPressed(context);
+        return KeyEventResult.handled;
+    }
+  }
+
+  /// TV菜单键处理：切换右侧剧集列表
+  KeyEventResult _handleTVMenuKey() {
+    if (_tvMode == TVPlayerMode.sideMenu) {
+      // 已在右侧菜单模式 -> 回到全屏模式
+      setState(() {
+        _tvMode = TVPlayerMode.fullscreen;
+      });
+      videoPageController.showTabBody = false;
     } else {
-      // 非TV版本，正常切换播放/暂停
-      playerController.playOrPause();
+      // 进入右侧菜单模式（不暂停播放）
+      setState(() {
+        _tvMode = TVPlayerMode.sideMenu;
+      });
+      videoPageController.showTabBody = true;
+      widget.openMenu();
+    }
+    return KeyEventResult.handled;
+  }
+
+  /// TV确定键处理
+  KeyEventResult _handleTVSelectKey() {
+    switch (_tvMode) {
+      case TVPlayerMode.fullscreen:
+        if (playerController.playing) {
+          // 正在播放 -> 暂停并进入暂停菜单模式
+          playerController.pause();
+          displayVideoController();
+          setState(() {
+            _tvMode = TVPlayerMode.pauseMenu;
+          });
+        } else {
+          // 已暂停但在全屏模式 -> 恢复播放
+          playerController.play();
+        }
+        return KeyEventResult.handled;
+      case TVPlayerMode.pauseMenu:
+      case TVPlayerMode.sideMenu:
+        // 菜单模式：让焦点系统处理按钮点击
+        return KeyEventResult.ignored;
+    }
+  }
+
+  /// TV全屏模式下方向键处理
+  KeyEventResult _handleTVArrowKeyInFullscreen(LogicalKeyboardKey key) {
+    switch (key) {
+      case LogicalKeyboardKey.arrowUp:
+        handleShortcutVolumeChange('up');
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowDown:
+        handleShortcutVolumeChange('down');
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowLeft:
+        handleShortcutRewind();
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowRight:
+        handleShortcutForwardDown();
+        return KeyEventResult.handled;
+      default:
+        return KeyEventResult.ignored;
     }
   }
 
@@ -551,7 +695,10 @@ class _PlayerItemState extends State<PlayerItem>
   void displayVideoController() {
     animationController?.forward();
     hideTimer?.cancel();
-    startHideTimer();
+    // TV版本：显示控制面板时不自动隐藏（需要用户手动按返回键）
+    if (!isTV) {
+      startHideTimer();
+    }
     playerController.showVideoController = true;
   }
 
@@ -559,6 +706,12 @@ class _PlayerItemState extends State<PlayerItem>
     animationController?.reverse();
     hideTimer?.cancel();
     playerController.showVideoController = false;
+    // TV版本：隐藏控制面板时回到全屏模式
+    if (isTV && _tvMode == TVPlayerMode.pauseMenu) {
+      setState(() {
+        _tvMode = TVPlayerMode.fullscreen;
+      });
+    }
   }
 
   Future<void> setPlaybackSpeed(double speed) async {
@@ -1290,6 +1443,24 @@ class _PlayerItemState extends State<PlayerItem>
         _handleFullscreenChange(context);
       },
     );
+    
+    // TV版本：监听侧边菜单状态变化，同步更新TV模式
+    if (isTV) {
+      _tvModeListener = mobx.reaction<bool>(
+        (_) => videoPageController.showTabBody,
+        (showTabBody) {
+          if (showTabBody) {
+            setState(() {
+              _tvMode = TVPlayerMode.sideMenu;
+            });
+          } else {
+            setState(() {
+              _tvMode = TVPlayerMode.fullscreen;
+            });
+          }
+        },
+      );
+    }
     // workaround for #214
     if (Platform.isIOS) {
       FlutterVolumeController.setIOSAudioSessionCategory(
@@ -1345,6 +1516,7 @@ class _PlayerItemState extends State<PlayerItem>
     // We need to reuse the player after episode is changed and player item is disposed
     // We dispose player after video page disposed
     _fullscreenListener();
+    _tvModeListener?.call();
     WidgetsBinding.instance.removeObserver(this);
     windowManager.removeListener(this);
     playerTimer?.cancel();
@@ -1420,20 +1592,17 @@ class _PlayerItemState extends State<PlayerItem>
                             focusNode: widget.keyboardFocus,
                             autofocus: true,
                             onKeyEvent: (focusNode, KeyEvent event) {
+                              // TV版本：使用专用的遥控器处理逻辑
+                              if (isTV) {
+                                return _handleTVRemoteEvent(event);
+                              }
+                              
+                              // 非TV版本：原有逻辑
                               bool handled = false;
                               final keyLabel = event.logicalKey.keyLabel.isNotEmpty
                                 ? event.logicalKey.keyLabel
                                 : event.logicalKey.debugName ?? '';
-                              
-                              // TV遥控器菜单键：打开剧集列表
                               if (event is KeyDownEvent) {
-                                if (event.logicalKey == LogicalKeyboardKey.contextMenu ||
-                                    event.logicalKey == LogicalKeyboardKey.f10 ||
-                                    keyLabel == 'Menu') {
-                                  videoPageController.showTabBody = !videoPageController.showTabBody;
-                                  widget.openMenu();
-                                  return KeyEventResult.handled;
-                                }
                                 handled = handleShortcutDown(keyLabel);
                               } else if (event is KeyRepeatEvent) {
                                 handled = handleShortcutLongPress(keyLabel,"Repeat");

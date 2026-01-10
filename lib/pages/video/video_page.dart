@@ -919,23 +919,32 @@ class _VideoPageState extends State<VideoPage>
         }
       }
     }
+    // TV版本使用FocusTraversalGroup包装，使方向键可以在剧集列表中导航
+    Widget gridView = GridView.builder(
+      scrollDirection: Axis.vertical,
+      controller: scrollController,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 5,
+        mainAxisExtent: 70,
+      ),
+      itemCount: cardList.length,
+      itemBuilder: (context, index) {
+        return cardList[index];
+      },
+    );
+
+    if (isTV) {
+      gridView = FocusTraversalGroup(
+        child: gridView,
+      );
+    }
+
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.only(top: 0, right: 8, left: 8),
-        child: GridView.builder(
-          scrollDirection: Axis.vertical,
-          controller: scrollController,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 5,
-            mainAxisExtent: 70,
-          ),
-          itemCount: cardList.length,
-          itemBuilder: (context, index) {
-            return cardList[index];
-          },
-        ),
+        child: gridView,
       ),
     );
   }
