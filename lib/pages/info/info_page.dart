@@ -353,6 +353,8 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
             }),
           ),
           floatingActionButton: FloatingActionButton.extended(
+            // TV版本：进入页面后自动聚焦到"开始观看"按钮
+            autofocus: isTV,
             icon: const Icon(Icons.play_arrow_rounded),
             label: Text('开始观看'),
             onPressed: () async {
