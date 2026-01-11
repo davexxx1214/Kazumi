@@ -132,8 +132,20 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
         infoController.bangumiItem.votesCount.isEmpty) {
       queryBangumiInfoByID(infoController.bangumiItem.id, type: 'attach');
     }
-    sourceTabController =
-        TabController(length: pluginsController.pluginList.length, vsync: this);
+    // TV版本：默认选择 AGE 标签（如果存在）
+    int initialTabIndex = 0;
+    if (isTV) {
+      final ageIndex = pluginsController.pluginList
+          .indexWhere((plugin) => plugin.name.toUpperCase() == 'AGE');
+      if (ageIndex != -1) {
+        initialTabIndex = ageIndex;
+      }
+    }
+    sourceTabController = TabController(
+      length: pluginsController.pluginList.length,
+      vsync: this,
+      initialIndex: initialTabIndex,
+    );
     infoTabController = TabController(length: 5, vsync: this);
     infoTabController.addListener(() {
       int index = infoTabController.index;
