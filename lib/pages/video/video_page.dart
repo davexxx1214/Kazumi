@@ -48,6 +48,9 @@ class _VideoPageState extends State<VideoPage>
   ScrollController scrollController = ScrollController();
   late GridObserverController observerController;
   late AnimationController animation;
+  
+  // TV版本：当前播放剧集的焦点节点
+  final FocusNode currentEpisodeFocusNode = FocusNode();
   late Animation<Offset> _rightOffsetAnimation;
   late Animation<double> _maskOpacityAnimation;
   late TabController tabController;
@@ -192,6 +195,7 @@ class _VideoPageState extends State<VideoPage>
     videoPageController.episodeCommentsList.clear();
     Utils.unlockScreenRotation();
     tabController.dispose();
+    currentEpisodeFocusNode.dispose();
     super.dispose();
   }
 
@@ -257,6 +261,14 @@ class _VideoPageState extends State<VideoPage>
         animation.forward();
       }
       menuJumpToCurrentEpisode();
+      // TV版本：打开菜单时，焦点移到当前播放的剧集
+      if (isTV) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            currentEpisodeFocusNode.requestFocus();
+          }
+        });
+      }
     }
   }
 
@@ -831,6 +843,7 @@ class _VideoPageState extends State<VideoPage>
           // TV版本：用Focus包装以支持遥控器方向键导航和确定键选择
           if (isTV) {
             card = Focus(
+              focusNode: isCurrent ? currentEpisodeFocusNode : null, // 当前播放的剧集使用专用FocusNode
               autofocus: isCurrent, // 当前正在播放的剧集自动获取焦点
               onKeyEvent: (node, event) {
                 if (event is KeyDownEvent) {
