@@ -455,9 +455,13 @@ class _PlayerItemState extends State<PlayerItem>
       case TVPlayerMode.fullscreen:
         // 全屏模式：确定键切换播放/暂停
         if (playerController.playing) {
+          // 暂停并显示进度条
           playerController.pause();
+          displayVideoController();
         } else {
+          // 恢复播放并隐藏进度条
           playerController.play();
+          hideVideoController();
         }
         return KeyEventResult.handled;
       case TVPlayerMode.pauseMenu:
@@ -478,13 +482,27 @@ class _PlayerItemState extends State<PlayerItem>
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowLeft:
         handleShortcutRewind();
+        // 快退时显示进度条，然后自动隐藏
+        _showProgressBarTemporarily();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowRight:
         handleShortcutForwardDown();
+        // 快进时显示进度条，然后自动隐藏
+        _showProgressBarTemporarily();
         return KeyEventResult.handled;
       default:
         return KeyEventResult.ignored;
     }
+  }
+
+  /// TV版本：临时显示进度条，一段时间后自动隐藏
+  void _showProgressBarTemporarily() {
+    if (!playerController.showVideoController) {
+      displayVideoController();
+    }
+    // 取消之前的隐藏定时器，重新开始计时
+    hideTimer?.cancel();
+    startHideTimer();
   }
 
   void _handleDoubleTap() {
