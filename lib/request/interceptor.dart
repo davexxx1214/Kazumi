@@ -9,7 +9,7 @@ import 'package:kazumi/utils/mortis.dart';
 import 'package:kazumi/utils/constants.dart';
 
 class ApiInterceptor extends Interceptor {
-  static Box setting = GStorage.setting;
+  static Box get setting => GStorage.setting;
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     // Github mirror

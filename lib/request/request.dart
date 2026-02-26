@@ -12,7 +12,7 @@ import 'package:hive_ce/hive.dart';
 class Request {
   static final Request _instance = Request._internal();
   static late final Dio dio;
-  static Box setting = GStorage.setting;
+  static Box get setting => GStorage.setting;
   factory Request() => _instance;
 
   // 初始化 （一般只在应用启动时调用）
