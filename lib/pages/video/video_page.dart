@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:canvas_danmaku/models/danmaku_content_item.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/pages/player/player_controller.dart';
 import 'package:kazumi/pages/video/video_controller.dart';
 import 'package:kazumi/pages/history/history_controller.dart';
 import 'package:kazumi/utils/logger.dart';
+import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/pages/player/player_item.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:hive_ce/hive.dart';
@@ -48,6 +50,9 @@ class _VideoPageState extends State<VideoPage>
   ScrollController scrollController = ScrollController();
   late GridObserverController observerController;
   late AnimationController animation;
+  
+  // TV版本：当前播放剧集的焦点节点
+  final FocusNode currentEpisodeFocusNode = FocusNode();
   late Animation<Offset> _rightOffsetAnimation;
   late Animation<double> _maskOpacityAnimation;
   late TabController tabController;
@@ -239,6 +244,7 @@ class _VideoPageState extends State<VideoPage>
     tabController.dispose();
     // Cancel timed shutdown when leaving anime page
     TimedShutdownService().cancel();
+    currentEpisodeFocusNode.dispose();
     super.dispose();
   }
 
@@ -305,6 +311,14 @@ class _VideoPageState extends State<VideoPage>
         animation.forward();
       }
       menuJumpToCurrentEpisode();
+      // TV版本：打开菜单时，焦点移到当前播放的剧集
+      if (isTV) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            currentEpisodeFocusNode.requestFocus();
+          }
+        });
+      }
     }
   }
 
@@ -330,7 +344,17 @@ class _VideoPageState extends State<VideoPage>
       videoPageController.isPip = false;
       return;
     }
+    // TV版本：优先检查是否需要关闭侧边菜单
+    if (isTV && videoPageController.showTabBody) {
+      closeTabBodyAnimated();
+      return;
+    }
     if (videoPageController.isFullscreen && !Utils.isTablet()) {
+      // TV版本：全屏模式下按返回直接退出播放器
+      if (isTV) {
+        Navigator.of(context).pop();
+        return;
+      }
       menuJumpToCurrentEpisode();
       await Utils.exitFullScreen();
       videoPageController.showTabBody = false;
@@ -886,7 +910,6 @@ class _VideoPageState extends State<VideoPage>
   }
 
   Widget _buildDownloadStatusIcon(int episodeNumber, String episodePageUrl) {
-    // 离线模式下不显示下载状态图标
     if (videoPageController.isOfflineMode) return const SizedBox.shrink();
     final episode = _getEpisodeFromRecords(episodeNumber, episodePageUrl);
     if (episode == null) return const SizedBox.shrink();
@@ -930,7 +953,10 @@ class _VideoPageState extends State<VideoPage>
             int count = 1;
             for (var urlItem in road.data) {
               int count0 = count;
-              cardList.add(Container(
+              final bool isCurrent = count0 == videoPageController.currentEpisode &&
+                  videoPageController.currentRoad == currentRoad;
+
+              Widget card = Container(
                 margin: const EdgeInsets.only(bottom: 4),
                 child: Material(
                   color: Theme.of(context).colorScheme.onInverseSurface,
@@ -938,8 +964,7 @@ class _VideoPageState extends State<VideoPage>
                   clipBehavior: Clip.hardEdge,
                   child: InkWell(
                     onTap: () async {
-                      if (count0 == videoPageController.currentEpisode &&
-                          videoPageController.currentRoad == currentRoad) {
+                      if (isCurrent) {
                         return;
                       }
                       KazumiLogger()
@@ -955,11 +980,7 @@ class _VideoPageState extends State<VideoPage>
                         children: <Widget>[
                           Row(
                             children: [
-                              if (count0 ==
-                                      (videoPageController.currentEpisode) &&
-                                  currentRoad ==
-                                      videoPageController
-                                          .currentRoad) ...<Widget>[
+                              if (isCurrent) ...<Widget>[
                                 Image.asset(
                                   'assets/images/playing.gif',
                                   color: Theme.of(context).colorScheme.primary,
@@ -974,11 +995,7 @@ class _VideoPageState extends State<VideoPage>
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                     fontSize: 13,
-                                    color: (count0 ==
-                                                videoPageController
-                                                    .currentEpisode &&
-                                            currentRoad ==
-                                                videoPageController.currentRoad)
+                                    color: isCurrent
                                         ? Theme.of(context).colorScheme.primary
                                         : Theme.of(context)
                                             .colorScheme
@@ -994,28 +1011,135 @@ class _VideoPageState extends State<VideoPage>
                     ),
                   ),
                 ),
-              ));
+              );
+
+              if (isTV) {
+                card = Focus(
+                  focusNode: isCurrent ? currentEpisodeFocusNode : null,
+                  autofocus: isCurrent,
+                  onKeyEvent: (node, event) {
+                    if (event is KeyDownEvent) {
+                      if (event.logicalKey == LogicalKeyboardKey.select ||
+                          event.logicalKey == LogicalKeyboardKey.enter ||
+                          event.logicalKey == LogicalKeyboardKey.gameButtonA) {
+                        if (!isCurrent) {
+                          KazumiLogger().i('VideoPageController: video URL is $urlItem');
+                          closeTabBodyAnimated();
+                          changeEpisode(count0, currentRoad: currentRoad);
+                        }
+                        return KeyEventResult.handled;
+                      }
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  child: Builder(
+                    builder: (context) {
+                      final bool hasFocus = Focus.of(context).hasFocus;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          border: hasFocus
+                              ? Border.all(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 2,
+                                )
+                              : null,
+                        ),
+                        child: Material(
+                          color: hasFocus
+                              ? Theme.of(context).colorScheme.primaryContainer
+                              : Theme.of(context).colorScheme.onInverseSurface,
+                          borderRadius: BorderRadius.circular(6),
+                          clipBehavior: Clip.hardEdge,
+                          child: InkWell(
+                            onTap: () async {
+                              if (isCurrent) {
+                                return;
+                              }
+                              KazumiLogger().i('VideoPageController: video URL is $urlItem');
+                              closeTabBodyAnimated();
+                              changeEpisode(count0, currentRoad: currentRoad);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Row(
+                                    children: [
+                                      if (isCurrent) ...<Widget>[
+                                        Image.asset(
+                                          'assets/images/playing.gif',
+                                          color:
+                                              Theme.of(context).colorScheme.primary,
+                                          height: 12,
+                                        ),
+                                        const SizedBox(width: 6)
+                                      ],
+                                      Expanded(
+                                          child: Text(
+                                        road.identifier[count0 - 1],
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            color: isCurrent || hasFocus
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .primary
+                                                : Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface),
+                                      )),
+                                      _buildDownloadStatusIcon(count0, urlItem),
+                                      const SizedBox(width: 2),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }
+
+              cardList.add(card);
               count++;
             }
           }
         }
+
+        Widget gridView = GridView.builder(
+          scrollDirection: Axis.vertical,
+          controller: scrollController,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 5,
+            mainAxisExtent: 70,
+          ),
+          itemCount: cardList.length,
+          itemBuilder: (context, index) {
+            return cardList[index];
+          },
+        );
+
+        if (isTV) {
+          gridView = FocusTraversalGroup(
+            child: gridView,
+          );
+        }
+
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.only(top: 0, right: 8, left: 8),
-            child: GridView.builder(
-              scrollDirection: Axis.vertical,
-              controller: scrollController,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 5,
-                mainAxisExtent: 70,
-              ),
-              itemCount: cardList.length,
-              itemBuilder: (context, index) {
-                return cardList[index];
-              },
-            ),
+            child: gridView,
           ),
         );
       },

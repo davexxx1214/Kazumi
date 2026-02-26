@@ -648,7 +648,148 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
     });
   }
 
+  /// TV版本专用控制栏按钮 - 带焦点高亮样式
+  Widget _buildTVFocusButton({
+    required Widget icon,
+    required VoidCallback onPressed,
+    String? tooltip,
+    bool autofocus = false,
+  }) {
+    return Focus(
+      autofocus: autofocus,
+      child: Builder(
+        builder: (context) {
+          final focusNode = Focus.of(context);
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: focusNode.hasFocus
+                  ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
+                  : null,
+              color: focusNode.hasFocus
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
+                  : Colors.transparent,
+            ),
+            child: IconButton(
+              color: Colors.white,
+              icon: icon,
+              onPressed: onPressed,
+              tooltip: tooltip,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// TV版本专用控制栏
+  Widget get tvBottomControlWidget {
+    return Observer(
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          bottom: true,
+          left: true,
+          right: true,
+          child: FocusTraversalGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 时间显示
+                Container(
+                  padding: const EdgeInsets.only(left: 10.0, bottom: 10),
+                  child: Text(
+                    "${Utils.durationToString(playerController.currentPosition)} / ${Utils.durationToString(playerController.duration)}",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.0,
+                      fontFeatures: [
+                        FontFeature.tabularFigures(),
+                      ],
+                    ),
+                  ),
+                ),
+                // 进度条
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: ProgressBar(
+                    thumbRadius: 8,
+                    thumbGlowRadius: 18,
+                    timeLabelLocation: TimeLabelLocation.sides,
+                    timeLabelTextStyle: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.0,
+                      fontFeatures: [
+                        FontFeature.tabularFigures(),
+                      ],
+                    ),
+                    progress: playerController.currentPosition,
+                    buffered: playerController.buffer,
+                    total: playerController.duration,
+                    onSeek: (duration) {
+                      playerController.seek(duration);
+                    },
+                  ),
+                ),
+                // TV控制按钮行
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 播放/暂停
+                      _buildTVFocusButton(
+                        icon: Icon(playerController.playing
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded),
+                        onPressed: () => playerController.playOrPause(),
+                        tooltip: playerController.playing ? '暂停' : '播放',
+                        autofocus: true, // 第一个按钮自动获取焦点
+                      ),
+                      const SizedBox(width: 16),
+                      // 下一集
+                      _buildTVFocusButton(
+                        icon: const Icon(Icons.skip_next_rounded),
+                        onPressed: () => widget.handlePreNextEpisode('next'),
+                        tooltip: '下一集',
+                      ),
+                      const SizedBox(width: 16),
+                      // 弹幕开关
+                      _buildTVFocusButton(
+                        icon: playerController.danmakuOn
+                            ? danmakuOnIcon(context)
+                            : cachedDanmakuOffIcon!,
+                        onPressed: () => widget.handleDanmaku(),
+                        tooltip: playerController.danmakuOn ? '关闭弹幕' : '打开弹幕',
+                      ),
+                      const SizedBox(width: 16),
+                      // 剧集列表
+                      _buildTVFocusButton(
+                        icon: const Icon(Icons.menu_open_rounded),
+                        onPressed: () {
+                          videoPageController.showTabBody = !videoPageController.showTabBody;
+                          widget.openMenu();
+                        },
+                        tooltip: '剧集列表',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget get bottomControlWidget {
+    // TV版本使用简化的控制栏
+    if (isTV) {
+      return tvBottomControlWidget;
+    }
+    
     return Observer(
       builder: (context) {
         return SafeArea(

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:kazumi/request/api.dart';
 
+/// 是否为 TV 版本（通过 --dart-define=IS_TV=true 构建时传入）
+const bool isTV = bool.fromEnvironment('IS_TV', defaultValue: false);
+
 class StyleString {
   static const double cardSpace = 8;
   static const double safeSpace = 12;
@@ -214,26 +217,58 @@ final List<String> defaultAnimeTags = const [
 ];
 
 // 播放器默认快捷键
-  final Map<String, List<String>> defaultShortcuts = const {
-    'playorpause': [' '],
-    'forward': ['Arrow Right'],
-    'rewind': ['Arrow Left'],
-    'next': ['N'],
-    'prev': ['P'],
-    'volumeup': ['Arrow Up'],
-    'volumedown': ['Arrow Down'],
-    'togglemute': ['M'],
-    'fullscreen': ['F'],
-    'exitfullscreen': ['Escape'],
-    'toggledanmaku': ['D'],
-    'screenshot': ['S'],
-    'skip': ['K'],
-    'speed1': ['1'],
-    'speed2': ['2'],
-    'speed3': ['3'],
-    'speedup': ['X'],
-    'speeddown': ['Z'],
-  };
+final Map<String, List<String>> defaultShortcuts = const {
+  'playorpause': [' '],
+  'forward': ['Arrow Right'],
+  'rewind': ['Arrow Left'],
+  'next': ['N'],
+  'prev': ['P'],
+  'volumeup': ['Arrow Up'],
+  'volumedown': ['Arrow Down'],
+  'togglemute': ['M'],
+  'fullscreen': ['F'],
+  'exitfullscreen': ['Escape'],
+  'toggledanmaku': ['D'],
+  'screenshot': ['S'],
+  'skip': ['K'],
+  'speed1': ['1'],
+  'speed2': ['2'],
+  'speed3': ['3'],
+  'speedup': ['X'],
+  'speeddown': ['Z'],
+};
+
+// TV版本播放器快捷键（全屏播放模式下使用）
+final Map<String, List<String>> tvShortcuts = const {
+  'playorpause': [' '], // 空格键（确定键单独处理）
+  'forward': ['Arrow Right'], // 右键快进
+  'rewind': ['Arrow Left'], // 左键快退
+  'next': ['N'],
+  'prev': ['P'],
+  'volumeup': ['Arrow Up'], // 上键音量增加
+  'volumedown': ['Arrow Down'], // 下键音量减少
+  'togglemute': ['M'],
+  'fullscreen': ['F'],
+  'exitfullscreen': ['Escape'],
+  'toggledanmaku': ['D'],
+  'screenshot': ['S'],
+  'skip': ['K'],
+  'speed1': ['1'],
+  'speed2': ['2'],
+  'speed3': ['3'],
+  'speedup': ['X'],
+  'speeddown': ['Z'],
+};
+
+/// TV播放器模式枚举
+enum TVPlayerMode {
+  /// 全屏播放模式：方向键控制音量/快进快退，确定键暂停
+  fullscreen,
+  /// 暂停菜单模式：方向键导航菜单，确定键选择按钮
+  pauseMenu,
+  /// 右侧菜单模式：方向键导航剧集列表，确定键选择剧集
+  sideMenu,
+}
 
 // 键位别名
   final Map<String, String> keyAliases = {

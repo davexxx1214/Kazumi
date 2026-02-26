@@ -446,8 +446,9 @@ abstract class _PlayerController with Store {
     mediaPlayer!.setPlaylistMode(PlaylistMode.none);
 
     // error handle
+    // TV版本默认关闭播放器错误提示（因为TV上无法点击dismiss按钮）
     bool showPlayerError =
-        setting.get(SettingBoxKey.showPlayerError, defaultValue: true);
+        setting.get(SettingBoxKey.showPlayerError, defaultValue: !isTV);
     mediaPlayer!.stream.error.listen((event) {
       if (showPlayerError) {
         if (event.toString().contains('Failed to open') && playerBuffering) {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:kazumi/utils/utils.dart';
+import 'package:kazumi/utils/constants.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/pages/info/info_controller.dart';
@@ -284,48 +286,111 @@ class _SourceSheetState extends State<SourceSheet>
                       (pluginIndex) {
                     var plugin = pluginsController.pluginList[pluginIndex];
                     var cardList = <Widget>[];
+                    int cardIndex = 0;
                     for (var searchResponse
                         in widget.infoController.pluginSearchResponseList) {
                       if (searchResponse.pluginName == plugin.name) {
                         for (var searchItem in searchResponse.data) {
-                          cardList.add(
-                            Card(
-                              elevation: 0,
-                              margin: const EdgeInsets.only(
-                                  left: 10, right: 10, top: 10),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () async {
-                                  KazumiDialog.showLoading(
-                                    msg: '获取中',
-                                    barrierDismissible: Utils.isDesktop(),
-                                    onDismiss: () {
-                                      videoPageController.cancelQueryRoads();
-                                    },
-                                  );
-                                  videoPageController.bangumiItem =
-                                      widget.infoController.bangumiItem;
-                                  videoPageController.currentPlugin = plugin;
-                                  videoPageController.title = searchItem.name;
-                                  videoPageController.src = searchItem.src;
-                                  try {
-                                    await videoPageController.queryRoads(
-                                        searchItem.src, plugin.name);
-                                    KazumiDialog.dismiss();
-                                    Modular.to.pushNamed('/video/');
-                                  } catch (_) {
-                                    KazumiLogger()
-                                        .w("QueryManager: failed to query video playlist");
-                                    KazumiDialog.dismiss();
-                                  }
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20),
-                                  child: Text(searchItem.name),
-                                ),
+                          final bool isFirstCard = cardIndex == 0;
+                          cardIndex++;
+                          
+                          Future<void> onSelectCard() async {
+                            KazumiDialog.showLoading(
+                              msg: '获取中',
+                              barrierDismissible: Utils.isDesktop(),
+                              onDismiss: () {
+                                videoPageController.cancelQueryRoads();
+                              },
+                            );
+                            videoPageController.bangumiItem =
+                                widget.infoController.bangumiItem;
+                            videoPageController.currentPlugin = plugin;
+                            videoPageController.title = searchItem.name;
+                            videoPageController.src = searchItem.src;
+                            try {
+                              await videoPageController.queryRoads(
+                                  searchItem.src, plugin.name);
+                              KazumiDialog.dismiss();
+                              Modular.to.pushNamed('/video/');
+                            } catch (_) {
+                              KazumiLogger()
+                                  .w("QueryManager: failed to query video playlist");
+                              KazumiDialog.dismiss();
+                            }
+                          }
+                          
+                          Widget card = Card(
+                            elevation: 0,
+                            margin: const EdgeInsets.only(
+                                left: 10, right: 10, top: 10),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: onSelectCard,
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Text(searchItem.name),
                               ),
                             ),
                           );
+                          
+                          // TV版本：用Focus包装以支持遥控器导航
+                          if (isTV) {
+                            card = Focus(
+                              autofocus: isFirstCard, // 第一个卡片自动获取焦点
+                              onKeyEvent: (node, event) {
+                                if (event is KeyDownEvent) {
+                                  if (event.logicalKey == LogicalKeyboardKey.select ||
+                                      event.logicalKey == LogicalKeyboardKey.enter ||
+                                      event.logicalKey == LogicalKeyboardKey.gameButtonA) {
+                                    onSelectCard();
+                                    return KeyEventResult.handled;
+                                  }
+                                }
+                                return KeyEventResult.ignored;
+                              },
+                              child: Builder(
+                                builder: (context) {
+                                  final bool hasFocus = Focus.of(context).hasFocus;
+                                  return Card(
+                                    elevation: hasFocus ? 4 : 0,
+                                    margin: const EdgeInsets.only(
+                                        left: 10, right: 10, top: 10),
+                                    color: hasFocus
+                                        ? Theme.of(context).colorScheme.primaryContainer
+                                        : null,
+                                    shape: hasFocus
+                                        ? RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            side: BorderSide(
+                                              color: Theme.of(context).colorScheme.primary,
+                                              width: 2,
+                                            ),
+                                          )
+                                        : RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: onSelectCard,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(20),
+                                        child: Text(
+                                          searchItem.name,
+                                          style: TextStyle(
+                                            color: hasFocus
+                                                ? Theme.of(context).colorScheme.primary
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          }
+                          
+                          cardList.add(card);
                         }
                       }
                     }
