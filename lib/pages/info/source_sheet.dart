@@ -370,8 +370,7 @@ class _SourceSheetState extends State<SourceSheet>
   }
 
   Widget buildPluginView(Plugin plugin, List<Widget> cardList) {
-    final status =
-        widget.infoController.pluginSearchStatus[plugin.name];
+    final status = widget.infoController.pluginSearchStatus[plugin.name];
     if (status == 'pending') {
       return const Center(child: CircularProgressIndicator());
     }
@@ -680,9 +679,12 @@ class _SourceSheetState extends State<SourceSheet>
                               autofocus: isFirstCard, // 第一个卡片自动获取焦点
                               onKeyEvent: (node, event) {
                                 if (event is KeyDownEvent) {
-                                  if (event.logicalKey == LogicalKeyboardKey.select ||
-                                      event.logicalKey == LogicalKeyboardKey.enter ||
-                                      event.logicalKey == LogicalKeyboardKey.gameButtonA) {
+                                  if (event.logicalKey ==
+                                          LogicalKeyboardKey.select ||
+                                      event.logicalKey ==
+                                          LogicalKeyboardKey.enter ||
+                                      event.logicalKey ==
+                                          LogicalKeyboardKey.gameButtonA) {
                                     onSelectCard();
                                     return KeyEventResult.handled;
                                   }
@@ -691,24 +693,31 @@ class _SourceSheetState extends State<SourceSheet>
                               },
                               child: Builder(
                                 builder: (context) {
-                                  final bool hasFocus = Focus.of(context).hasFocus;
+                                  final bool hasFocus =
+                                      Focus.of(context).hasFocus;
                                   return Card(
                                     elevation: hasFocus ? 4 : 0,
                                     margin: const EdgeInsets.only(
                                         left: 10, right: 10, top: 10),
                                     color: hasFocus
-                                        ? Theme.of(context).colorScheme.primaryContainer
+                                        ? Theme.of(context)
+                                            .colorScheme
+                                            .primaryContainer
                                         : null,
                                     shape: hasFocus
                                         ? RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                             side: BorderSide(
-                                              color: Theme.of(context).colorScheme.primary,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
                                               width: 2,
                                             ),
                                           )
                                         : RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(12),
@@ -719,7 +728,9 @@ class _SourceSheetState extends State<SourceSheet>
                                           searchItem.name,
                                           style: TextStyle(
                                             color: hasFocus
-                                                ? Theme.of(context).colorScheme.primary
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .primary
                                                 : null,
                                           ),
                                         ),

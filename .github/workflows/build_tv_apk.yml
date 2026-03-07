@@ -3,11 +3,10 @@ on:
   workflow_dispatch: # 允许手动触发构建
   push:              # Push 时自动触发
     branches:
-      - main
-      - tv-*         # 以 tv- 开头的分支也会触发
+      - dev
   pull_request:      # PR 时自动触发
     branches:
-      - main
+      - dev
 
 jobs:
   build:
@@ -15,6 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: dev
           submodules: 'recursive' # Kazumi 包含子模块，必须递归拉取 [1]
 
       - name: Setup Java

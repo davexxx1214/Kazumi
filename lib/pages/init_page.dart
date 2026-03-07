@@ -10,6 +10,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/pages/collect/collect_controller.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:kazumi/utils/logger.dart';
+import 'package:kazumi/request/api.dart';
 import 'package:kazumi/utils/utils.dart';
 import 'package:provider/provider.dart';
 import 'package:kazumi/bean/settings/theme_provider.dart';
@@ -54,6 +55,7 @@ class _InitPageState extends State<InitPage> {
     }
 
     await _checkRunningOnX11();
+    await _ensureDefaultPluginSource();
     await _pluginInit();
 
     _startDefaultPage();
@@ -199,7 +201,7 @@ class _InitPageState extends State<InitPage> {
       await pluginsController.init();
       statementsText =
           await rootBundle.loadString("assets/statements/statements.txt");
-      _pluginUpdate();
+      await _pluginUpdate();
     } catch (_) {}
     if (pluginsController.pluginList.isEmpty) {
       await KazumiDialog.show(
@@ -241,6 +243,17 @@ class _InitPageState extends State<InitPage> {
         },
       );
     }
+  }
+
+  Future<void> _ensureDefaultPluginSource() async {
+    final currentValue = setting.get(SettingBoxKey.pluginSourceIndexUrl);
+    if (currentValue is String && currentValue.trim().isNotEmpty) {
+      return;
+    }
+    await setting.put(
+      SettingBoxKey.pluginSourceIndexUrl,
+      Api.defaultPluginSourceIndex,
+    );
   }
 
   // The function is not completed yet
@@ -304,7 +317,8 @@ class _InitPageState extends State<InitPage> {
   }
 
   Future<void> _update() async {
-    bool autoUpdate = await setting.get(SettingBoxKey.autoUpdate, defaultValue: true);
+    bool autoUpdate =
+        await setting.get(SettingBoxKey.autoUpdate, defaultValue: true);
     if (autoUpdate) {
       Modular.get<MyController>().checkUpdate(type: 'auto');
     }
@@ -312,15 +326,21 @@ class _InitPageState extends State<InitPage> {
 
   Future<void> _pluginUpdate() async {
     await pluginsController.queryPluginHTTPList();
-    int count = 0;
+    final updatablePlugins = <String>[];
     for (var plugin in pluginsController.pluginList) {
       if (pluginsController.pluginUpdateStatus(plugin) == 'updatable') {
-        count++;
+        updatablePlugins.add(plugin.name);
       }
     }
-    if (count != 0) {
-      KazumiDialog.showToast(message: '检测到 $count 条规则可以更新');
+    if (updatablePlugins.isEmpty) {
+      return;
     }
+    final updatedCount = await pluginsController.tryUpdateAllPlugin();
+    if (updatedCount > 0) {
+      KazumiDialog.showToast(message: '已自动更新 $updatedCount 条规则');
+      return;
+    }
+    KazumiDialog.showToast(message: '检测到 ${updatablePlugins.length} 条规则可以更新');
   }
 
   @override
