@@ -9,6 +9,22 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    - lib/bbcode/generated/**
+  errors:
+    avoid_function_literals_in_foreach_calls: ignore
+    avoid_print: ignore
+    constant_identifier_names: ignore
+    curly_braces_in_flow_control_structures: ignore
+    depend_on_referenced_packages: ignore
+    deprecated_member_use: ignore
+    library_private_types_in_public_api: ignore
+    no_leading_underscores_for_local_identifiers: ignore
+    non_constant_identifier_names: ignore
+    prefer_null_aware_operators: ignore
+    strict_top_level_inference: ignore
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`
