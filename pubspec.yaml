@@ -16,11 +16,11 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.0.3+20003
+version: 2.0.4+20004
 
 environment:
   sdk: ">=3.3.4 <4.0.0"
-  flutter: 3.41.2
+  flutter: 3.41.4
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -41,6 +41,7 @@ dependencies:
   mobx: ^2.6.0
   flutter_mobx: ^2.3.0
   dio: ^5.0.0
+  cookie_jar: ^4.0.9
   connectivity_plus: ^6.0.5
 
   path_provider: ^2.1.5
@@ -93,7 +94,7 @@ dependencies:
   webview_windows:
     git:
       url: https://github.com/Predidit/flutter-webview-windows.git
-      ref: 9b9aabb2452e53d8d32bf59d571520fdfbaa7c21
+      ref: 1b9e83371356c04d8b0fb7ab1d20ebacf5cf9764
   desktop_webview_window:
     git:
       url: https://github.com/Predidit/linux_webview_window.git
