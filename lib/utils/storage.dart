@@ -329,6 +329,7 @@ class SettingBoxKey {
       syncPlayEndPoint = 'syncPlayEndPoint',
       androidEnableOpenSLES = 'androidEnableOpenSLES',
       androidVideoRenderer = 'androidVideoRenderer',
+      androidAutoEnterPIP = 'androidAutoEnterPIP',
       defaultSuperResolutionType = 'defaultSuperResolutionType',
       superResolutionWarn = 'superResolutionWarn',
       playerDisableAnimations = 'playerDisableAnimations',
@@ -348,5 +349,6 @@ class SettingBoxKey {
       showRating = 'showRating',
       downloadParallelEpisodes = 'downloadParallelEpisodes',
       downloadParallelSegments = 'downloadParallelSegments',
-      downloadDanmaku = 'downloadDanmaku';
+      downloadDanmaku = 'downloadDanmaku',
+      shortcutDialogShown = 'shortcutDialogShown';
 }
