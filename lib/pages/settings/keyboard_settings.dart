@@ -22,6 +22,22 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
 
   final FocusNode focusNode = FocusNode();
 
+  String shortcutDisplayName(String func) {
+    if (isTV) {
+      switch (func) {
+        case 'forward':
+          return '右方向键快进';
+        case 'rewind':
+          return '左方向键快退';
+        case 'volumeup':
+          return '上方向键临时倍速';
+        case 'volumedown':
+          return '下方向键恢复原速';
+      }
+    }
+    return shortcutsChineseName[func] ?? func;
+  }
+
   @override
   void initState() {
     super.initState();    
@@ -60,7 +76,7 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
       for (int i = 0; i < otherKeys.length; i++) {
         if (otherFunc == func && i == index) continue;
         if (otherKeys[i] == rawKey) {
-          final name = shortcutsChineseName[otherFunc] ?? otherFunc;
+          final name = shortcutDisplayName(otherFunc);
           KazumiDialog.showToast(message: "按键已被【$name】占用，请重新输入");
           return true;
         }
@@ -143,7 +159,7 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
                       Row(
                         children: [
                           Text(
-                            shortcutsChineseName[func] ?? func,
+                            shortcutDisplayName(func),
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
                           ),
                           Spacer(),

@@ -362,7 +362,7 @@ class _PlayerItemState extends State<PlayerItem>
     }
   }
 
-  Future<void> handleShortcutForwardUp() async {
+  Future<void> handleShortcutForwardSeek() async {
     int skipTime = playerController.arrowKeySkipTime;
     int current = playerController.currentPosition.inSeconds;
     int total = playerController.duration.inSeconds;
@@ -370,17 +370,21 @@ class _PlayerItemState extends State<PlayerItem>
 
     targetPosition = current + skipTime;
     if (targetPosition > total) targetPosition = total;
+    try {
+      playerTimer?.cancel();
+      await playerController.seek(Duration(seconds: targetPosition));
+      playerTimer = getPlayerTimer();
+    } catch (e) {
+      KazumiLogger().e('PlayerController: seek failed', error: e);
+    }
+  }
+
+  Future<void> handleShortcutForwardUp() async {
     if (playerController.showPlaySpeed) {
       playerController.showPlaySpeed = false;
       setPlaybackSpeed(lastPlayerSpeed);
     } else {
-      try {
-        playerTimer?.cancel();
-        playerController.seek(Duration(seconds: targetPosition));
-        playerTimer = getPlayerTimer();
-      } catch (e) {
-        KazumiLogger().e('PlayerController: seek failed', error: e);
-      }
+      await handleShortcutForwardSeek();
     }
   }
 
@@ -420,10 +424,37 @@ class _PlayerItemState extends State<PlayerItem>
     playerController.playOrPause();
   }
 
+  void _handleTVSpeedUp() {
+    final double defaultShortcutForwardPlaySpeed = setting
+        .get(SettingBoxKey.defaultShortcutForwardPlaySpeed, defaultValue: 2.0);
+    if (!playerController.showPlaySpeed) {
+      lastPlayerSpeed = playerController.playerSpeed;
+    }
+    playerController.showPlaySpeed = true;
+    if (playerController.playerSpeed < defaultShortcutForwardPlaySpeed) {
+      unawaited(setPlaybackSpeed(defaultShortcutForwardPlaySpeed));
+    }
+  }
+
+  void _handleTVRestoreSpeed() {
+    playerController.showPlaySpeed = false;
+    if (playerController.playerSpeed != lastPlayerSpeed) {
+      unawaited(setPlaybackSpeed(lastPlayerSpeed));
+    }
+  }
+
   /// TV遥控器事件处理
   /// 三种模式：全屏模式、暂停菜单模式、右侧菜单模式
   KeyEventResult _handleTVRemoteEvent(KeyEvent event) {
     if (event is! KeyDownEvent) {
+      final key = event.logicalKey;
+      final isArrowKey = key == LogicalKeyboardKey.arrowUp ||
+          key == LogicalKeyboardKey.arrowDown ||
+          key == LogicalKeyboardKey.arrowLeft ||
+          key == LogicalKeyboardKey.arrowRight;
+      if (_tvMode == TVPlayerMode.fullscreen && isArrowKey) {
+        return KeyEventResult.handled;
+      }
       // 处理长按快进
       final keyLabel = event.logicalKey.keyLabel.isNotEmpty
           ? event.logicalKey.keyLabel
@@ -469,7 +500,7 @@ class _PlayerItemState extends State<PlayerItem>
 
     if (isArrowKey) {
       if (_tvMode == TVPlayerMode.fullscreen) {
-        // 全屏模式：方向键控制音量/快进快退
+        // 全屏模式：方向键控制倍速/快进快退
         return _handleTVArrowKeyInFullscreen(key);
       } else {
         // 菜单模式：让焦点系统处理UI导航
@@ -554,10 +585,10 @@ class _PlayerItemState extends State<PlayerItem>
   KeyEventResult _handleTVArrowKeyInFullscreen(LogicalKeyboardKey key) {
     switch (key) {
       case LogicalKeyboardKey.arrowUp:
-        handleShortcutVolumeChange('up');
+        _handleTVSpeedUp();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowDown:
-        handleShortcutVolumeChange('down');
+        _handleTVRestoreSpeed();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowLeft:
         handleShortcutRewind();
@@ -565,7 +596,7 @@ class _PlayerItemState extends State<PlayerItem>
         _showProgressBarTemporarily();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowRight:
-        handleShortcutForwardDown();
+        handleShortcutForwardSeek();
         // 快进时显示进度条，然后自动隐藏
         _showProgressBarTemporarily();
         return KeyEventResult.handled;

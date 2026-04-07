@@ -245,8 +245,8 @@ final Map<String, List<String>> tvShortcuts = const {
   'rewind': ['Arrow Left'], // 左键快退
   'next': ['N'],
   'prev': ['P'],
-  'volumeup': ['Arrow Up'], // 上键音量增加
-  'volumedown': ['Arrow Down'], // 下键音量减少
+  'volumeup': ['Arrow Up'], // 上键临时倍速播放
+  'volumedown': ['Arrow Down'], // 下键恢复原速
   'togglemute': ['M'],
   'fullscreen': ['F'],
   'exitfullscreen': ['Escape'],
@@ -286,7 +286,7 @@ enum TVPlayerMode {
 //功能中文名对应
   final Map<String, String> shortcutsChineseName = {
     'playorpause': '播放 / 暂停',
-    'forward': '快进 / 长按倍速',
+    'forward': '快进',
     'rewind': '快退',
     'next': '下一集',
     'prev': '上一集',

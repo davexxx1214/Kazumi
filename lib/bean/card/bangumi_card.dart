@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/bean/card/network_img_layer.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/modules/bangumi/bangumi_item.dart';
+import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/utils/utils.dart';
 
 // 视频卡片 - 垂直布局
@@ -18,23 +20,32 @@ class BangumiCardV extends StatelessWidget {
   final bool canTap;
   final bool enableHero;
 
-  @override
-  Widget build(BuildContext context) {
+  void _openBangumiInfo(BuildContext context) {
+    if (!canTap) {
+      KazumiDialog.showToast(
+        message: '编辑模式',
+      );
+      return;
+    }
+    Modular.to.pushNamed('/info/', arguments: bangumiItem);
+  }
+
+  Widget _buildCard(BuildContext context, {bool hasFocus = false}) {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
     return Card(
-      elevation: 0,
+      elevation: hasFocus ? 4 : 0,
       clipBehavior: Clip.antiAlias,
       margin: EdgeInsets.zero,
+      color: hasFocus ? colorScheme.primaryContainer : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: hasFocus
+            ? BorderSide(color: colorScheme.primary, width: 2)
+            : BorderSide.none,
+      ),
       child: GestureDetector(
         child: InkWell(
-          onTap: () {
-            if (!canTap) {
-              KazumiDialog.showToast(
-                message: '编辑模式',
-              );
-              return;
-            }
-            Modular.to.pushNamed('/info/', arguments: bangumiItem);
-          },
+          onTap: () => _openBangumiInfo(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -64,6 +75,34 @@ class BangumiCardV extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isTV) {
+      return _buildCard(context);
+    }
+
+    return Focus(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.select ||
+                event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.gameButtonA)) {
+          _openBangumiInfo(context);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Builder(
+        builder: (context) {
+          return _buildCard(
+            context,
+            hasFocus: Focus.of(context).hasFocus,
+          );
+        },
       ),
     );
   }
