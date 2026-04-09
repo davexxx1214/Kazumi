@@ -117,8 +117,11 @@ class _PlayerItemState extends State<PlayerItem>
   Timer? playerTimer;
   Timer? mouseScrollerTimer;
   Timer? hideVolumeUITimer;
+  Timer? forwardRepeatTimer;
+  Timer? rewindRepeatTimer;
 
   double lastVolume = 0;
+  bool _continuousSeekingInProgress = false;
 
   // 过渡动画控制器
   AnimationController? animationController;
@@ -213,12 +216,12 @@ class _PlayerItemState extends State<PlayerItem>
 
   void _initKeyboardActions() {
     //需要实现长按的功能列表。
-    keyboardActionsNeedLongPress = ["forward"];
+    keyboardActionsNeedLongPress = ["forward", "rewind"];
     //快捷键功能对应表
     keyboardActions = {
       'playorpause': () => playerController.playOrPause(),
       'forward': () async => handleShortcutForwardDown(),
-      'rewind': () async => handleShortcutRewind(),
+      'rewind': () async => handleShortcutRewindDown(),
       'next': () async => handlePreNextEpisode('next'),
       'prev': () async => handlePreNextEpisode('prev'),
       'volumeup': () async => handleShortcutVolumeChange('up'),
@@ -238,6 +241,8 @@ class _PlayerItemState extends State<PlayerItem>
       // 如需对应长按功能，例如对功能'func'对应长按，请分别添加'funcRepeat'和'funcUp'。
       'forwardRepeat': () async => handleShortcutForwardRepeat(),
       'forwardUp': () async => handleShortcutForwardUp(),
+      'rewindRepeat': () async => handleShortcutRewindRepeat(),
+      'rewindUp': () async => handleShortcutRewindUp(),
     };
   }
 
@@ -311,16 +316,18 @@ class _PlayerItemState extends State<PlayerItem>
     widget.changeEpisode(targetEpisode, currentRoad: currentRoad);
   }
 
-  //快退快捷键动作
-  Future<void> handleShortcutRewind() async {
-    int skipTime = playerController.arrowKeySkipTime;
-    int current = playerController.currentPosition.inSeconds;
-    int targetPosition;
-
-    targetPosition = current - skipTime;
-    if (targetPosition < 0) targetPosition = 0;
+  Future<void> _seekByArrowOffset(int offsetSeconds) async {
+    final int current = playerController.currentPosition.inSeconds;
+    final int total = playerController.duration.inSeconds;
+    final int targetPosition = (current + offsetSeconds).clamp(0, total);
 
     try {
+      if (!playerController.showVideoController) {
+        animationController?.forward();
+      }
+      playerController.showVideoController = true;
+      hideTimer?.cancel();
+      startHideTimer();
       playerTimer?.cancel();
       await playerController.seek(Duration(seconds: targetPosition));
       playerTimer = getPlayerTimer();
@@ -329,39 +336,60 @@ class _PlayerItemState extends State<PlayerItem>
     }
   }
 
+  //快退快捷键动作
+  Future<void> handleShortcutRewindDown() async {
+    await _seekByArrowOffset(-playerController.arrowKeySkipTime);
+  }
+
   // 快进快捷键动作
   Future<void> handleShortcutForwardDown() async {
-    lastPlayerSpeed = playerController.playerSpeed;
+    await _seekByArrowOffset(playerController.arrowKeySkipTime);
   }
 
   Future<void> handleShortcutForwardRepeat() async {
-    final double defaultShortcutForwardPlaySpeed = setting
-        .get(SettingBoxKey.defaultShortcutForwardPlaySpeed, defaultValue: 2.0);
-    if (playerController.playerSpeed < defaultShortcutForwardPlaySpeed) {
-      playerController.showPlaySpeed = true;
-      setPlaybackSpeed(defaultShortcutForwardPlaySpeed);
-    }
+    forwardRepeatTimer ??=
+        Timer.periodic(const Duration(milliseconds: 250), (timer) async {
+      if (_continuousSeekingInProgress) return;
+      _continuousSeekingInProgress = true;
+      await _seekByArrowOffset(playerController.arrowKeySkipTime);
+      _continuousSeekingInProgress = false;
+    });
+  }
+
+  Future<void> handleShortcutRewindRepeat() async {
+    rewindRepeatTimer ??=
+        Timer.periodic(const Duration(milliseconds: 250), (timer) async {
+      if (_continuousSeekingInProgress) return;
+      _continuousSeekingInProgress = true;
+      await _seekByArrowOffset(-playerController.arrowKeySkipTime);
+      _continuousSeekingInProgress = false;
+    });
+  }
+
+  Future<void> handleShortcutRewindUp() async {
+    rewindRepeatTimer?.cancel();
+    rewindRepeatTimer = null;
   }
 
   Future<void> handleShortcutForwardUp() async {
-    int skipTime = playerController.arrowKeySkipTime;
-    int current = playerController.currentPosition.inSeconds;
-    int total = playerController.duration.inSeconds;
-    int targetPosition;
+    forwardRepeatTimer?.cancel();
+    forwardRepeatTimer = null;
+  }
 
-    targetPosition = current + skipTime;
-    if (targetPosition > total) targetPosition = total;
-    if (playerController.showPlaySpeed) {
-      playerController.showPlaySpeed = false;
-      setPlaybackSpeed(lastPlayerSpeed);
-    } else {
-      try {
-        playerTimer?.cancel();
-        playerController.seek(Duration(seconds: targetPosition));
-        playerTimer = getPlayerTimer();
-      } catch (e) {
-        KazumiLogger().e('PlayerController: seek failed', error: e);
-      }
+  void _cancelContinuousSeekTimers() {
+    forwardRepeatTimer?.cancel();
+    forwardRepeatTimer = null;
+    rewindRepeatTimer?.cancel();
+    rewindRepeatTimer = null;
+    _continuousSeekingInProgress = false;
+  }
+
+  @override
+  void didUpdateWidget(covariant PlayerItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 防止焦点切换时漏掉 KeyUp 导致持续快进/快退。
+    if (!widget.keyboardFocus.hasFocus) {
+      _cancelContinuousSeekTimers();
     }
   }
 
@@ -474,8 +502,7 @@ class _PlayerItemState extends State<PlayerItem>
       );
       _syncAudioServiceState();
     } catch (e) {
-      KazumiLogger()
-          .w('AudioController: failed to bind callbacks', error: e);
+      KazumiLogger().w('AudioController: failed to bind callbacks', error: e);
     }
   }
 
@@ -1541,6 +1568,7 @@ class _PlayerItemState extends State<PlayerItem>
     hideTimer?.cancel();
     mouseScrollerTimer?.cancel();
     hideVolumeUITimer?.cancel();
+    _cancelContinuousSeekTimers();
     animationController?.dispose();
     animationController = null;
     _disposePlayerMenu();
