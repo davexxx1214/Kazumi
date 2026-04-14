@@ -476,10 +476,6 @@ class _PlayerItemState extends State<PlayerItem>
           key == LogicalKeyboardKey.arrowDown ||
           key == LogicalKeyboardKey.arrowLeft ||
           key == LogicalKeyboardKey.arrowRight;
-      if (_tvMode == TVPlayerMode.fullscreen && isArrowKey) {
-        return KeyEventResult.handled;
-      }
-      // 处理长按快进
       final keyLabel = event.logicalKey.keyLabel.isNotEmpty
           ? event.logicalKey.keyLabel
           : event.logicalKey.debugName ?? '';
@@ -487,6 +483,9 @@ class _PlayerItemState extends State<PlayerItem>
         handleShortcutLongPress(keyLabel, "Repeat");
       } else if (event is KeyUpEvent) {
         handleShortcutLongPress(keyLabel, "Up");
+      }
+      if (_tvMode == TVPlayerMode.fullscreen && isArrowKey) {
+        return KeyEventResult.handled;
       }
       return KeyEventResult.handled;
     }
@@ -960,6 +959,7 @@ class _PlayerItemState extends State<PlayerItem>
         _tvMode = TVPlayerMode.fullscreen;
       });
     }
+    widget.keyboardFocus.requestFocus();
   }
 
   Future<void> setPlaybackSpeed(double speed) async {
@@ -1035,6 +1035,7 @@ class _PlayerItemState extends State<PlayerItem>
       if (mounted && playerController.canHidePlayerPanel) {
         playerController.showVideoController = false;
         animationController?.reverse();
+        widget.keyboardFocus.requestFocus();
       }
       hideTimer = null;
     });
@@ -1882,39 +1883,42 @@ class _PlayerItemState extends State<PlayerItem>
                       ? (MediaQuery.of(context).size.height)
                       : (MediaQuery.of(context).size.width * 9.0 / (16.0)),
                   width: MediaQuery.of(context).size.width,
-                  child: Stack(alignment: Alignment.center, children: [
+                  child: Focus(
+                    // workaround for #461
+                    // I don't know why, but the focus node will break popscope.
+                    focusNode: widget.keyboardFocus,
+                    autofocus: true,
+                    onKeyEvent: (focusNode, KeyEvent event) {
+                      // TV版本：使用专用的遥控器处理逻辑
+                      if (isTV) {
+                        return _handleTVRemoteEvent(event);
+                      }
+
+                      // 非TV版本：仅在此Focus节点本身拥有主焦点时处理
+                      if (!widget.keyboardFocus.hasPrimaryFocus) {
+                        return KeyEventResult.ignored;
+                      }
+                      bool handled = false;
+                      final keyLabel =
+                          event.logicalKey.keyLabel.isNotEmpty
+                              ? event.logicalKey.keyLabel
+                              : event.logicalKey.debugName ?? '';
+                      if (event is KeyDownEvent) {
+                        handled = handleShortcutDown(keyLabel);
+                      } else if (event is KeyRepeatEvent) {
+                        handled =
+                            handleShortcutLongPress(keyLabel, "Repeat");
+                      } else if (event is KeyUpEvent) {
+                        handled =
+                            handleShortcutLongPress(keyLabel, "Up");
+                      }
+                      return handled
+                          ? KeyEventResult.handled
+                          : KeyEventResult.ignored;
+                    },
+                    child: Stack(alignment: Alignment.center, children: [
                     Center(
-                        child: Focus(
-                            // workaround for #461
-                            // I don't know why, but the focus node will break popscope.
-                            focusNode: widget.keyboardFocus,
-                            autofocus: true,
-                            onKeyEvent: (focusNode, KeyEvent event) {
-                              // TV版本：使用专用的遥控器处理逻辑
-                              if (isTV) {
-                                return _handleTVRemoteEvent(event);
-                              }
-                              
-                              // 非TV版本：原有逻辑
-                              bool handled = false;
-                              final keyLabel =
-                                  event.logicalKey.keyLabel.isNotEmpty
-                                      ? event.logicalKey.keyLabel
-                                      : event.logicalKey.debugName ?? '';
-                              if (event is KeyDownEvent) {
-                                handled = handleShortcutDown(keyLabel);
-                              } else if (event is KeyRepeatEvent) {
-                                handled =
-                                    handleShortcutLongPress(keyLabel, "Repeat");
-                              } else if (event is KeyUpEvent) {
-                                handled =
-                                    handleShortcutLongPress(keyLabel, "Up");
-                              }
-                              return handled
-                                  ? KeyEventResult.handled
-                                  : KeyEventResult.ignored;
-                            },
-                            child: const PlayerItemSurface())),
+                        child: const PlayerItemSurface()),
                     (playerController.isBuffering ||
                             videoPageController.loading)
                         ? const Positioned.fill(
@@ -2148,6 +2152,7 @@ class _PlayerItemState extends State<PlayerItem>
                             ),
                     ),
                   ]),
+                  ),
                 ),
               ),
             ),

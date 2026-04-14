@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/bean/card/bangumi_card.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -25,9 +26,9 @@ class _SearchPageState extends State<SearchPage> {
   /// Use a new instance of SearchPageController for each search page.
   final SearchPageController searchPageController = SearchPageController();
   final ScrollController scrollController = ScrollController();
-  final FocusNode _searchFieldFocusNode = FocusNode();
-  final FocusNode _searchButtonFocusNode = FocusNode();
-  final FocusNode _settingsButtonFocusNode = FocusNode();
+  late final FocusNode _searchFieldFocusNode;
+  late final FocusNode _searchButtonFocusNode;
+  late final FocusNode _settingsButtonFocusNode;
 
   final List<Tab> tabs = [
     Tab(text: "排序方式"),
@@ -37,6 +38,15 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
+    _searchFieldFocusNode = FocusNode(
+      onKeyEvent: isTV ? _handleTVSearchFieldKeyEvent : null,
+    );
+    _searchButtonFocusNode = FocusNode(
+      onKeyEvent: isTV ? _handleTVButtonKeyEvent : null,
+    );
+    _settingsButtonFocusNode = FocusNode(
+      onKeyEvent: isTV ? _handleTVButtonKeyEvent : null,
+    );
     scrollController.addListener(scrollListener);
     searchPageController.loadSearchHistories();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -46,6 +56,61 @@ class _SearchPageState extends State<SearchPage> {
         _submitSearch(tagString);
       }
     });
+  }
+
+  KeyEventResult _handleTVSearchFieldKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.arrowRight) {
+      final selection = searchController.selection;
+      if (selection.isCollapsed &&
+          selection.baseOffset >= searchController.text.length) {
+        _searchButtonFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
+
+    if (key == LogicalKeyboardKey.arrowDown) {
+      node.focusInDirection(TraversalDirection.down);
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _handleTVButtonKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      if (node == _searchButtonFocusNode) {
+        _searchFieldFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      } else if (node == _settingsButtonFocusNode) {
+        _searchButtonFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
+
+    if (key == LogicalKeyboardKey.arrowRight) {
+      if (node == _searchButtonFocusNode) {
+        _settingsButtonFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
+
+    if (key == LogicalKeyboardKey.arrowDown) {
+      node.focusInDirection(TraversalDirection.down);
+      return KeyEventResult.handled;
+    }
+
+    if (key == LogicalKeyboardKey.arrowUp) {
+      _searchFieldFocusNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
   }
 
   @override
