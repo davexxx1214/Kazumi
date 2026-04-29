@@ -1,6 +1,6 @@
 class Api {
   /// 当前版本
-  static const String version = '2.0.7';
+  static const String version = '2.0.8';
   /// 规则API级别
   static const int apiLevel = 6;
 
@@ -95,6 +95,9 @@ class Api {
 
   /// 获取弹弹番剧元数据（通过BGM番剧ID）
   static const String dandanAPIInfoByBgmBangumiId = "/api/v2/bangumi/bgmtv/{0}";
+
+  /// 图片识别番剧
+  static const String traceApi = 'https://api.trace.moe/search';
 
   static String formatUrl(String url, List<dynamic> params) {
     for (int i = 0; i < params.length; i++) {
