@@ -13,8 +13,47 @@
             default: 'warning'
     
     jobs:
+      flutter-test:
+        runs-on: "ubuntu-latest"
+        permissions:
+          contents: read
+        steps:
+          - name: Clone repository
+            uses: actions/checkout@v4
+          - name: Set up Flutter
+            uses: subosito/flutter-action@v2.16.0
+            with:
+              channel: stable
+              flutter-version-file: pubspec.yaml
+          - name: Get Flutter dependencies
+            run: flutter pub get
+            shell: bash
+          - name: Run Flutter tests
+            run: flutter test
+            shell: bash
+
+      flutter-analyze:
+        runs-on: "ubuntu-latest"
+        permissions:
+          contents: read
+        steps:
+          - name: Clone repository
+            uses: actions/checkout@v4
+          - name: Set up Flutter
+            uses: subosito/flutter-action@v2.16.0
+            with:
+              channel: stable
+              flutter-version-file: pubspec.yaml
+          - name: Get Flutter dependencies
+            run: flutter pub get
+            shell: bash
+          - name: Analyze Flutter project
+            run: flutter analyze --no-fatal-infos --fatal-warnings
+            shell: bash
+
       flutter-build-android:
         name: "Release for android"
+        needs: [flutter-test, flutter-analyze]
         runs-on: "ubuntu-latest" 
         permissions: write-all
         steps:
@@ -164,6 +203,7 @@
 
       flutter-build-linux:
         name: "Release for Linux"
+        needs: [flutter-test, flutter-analyze]
         runs-on: "ubuntu-latest" 
         permissions: write-all
         steps:
@@ -266,6 +306,7 @@
 
       flutter-build-ios:
         name: "Release for iOS"
+        needs: [flutter-test, flutter-analyze]
         runs-on: "macos-latest"
         permissions: write-all
 
@@ -303,6 +344,7 @@
 
       flutter-build-macos:
         name: "Release for Macos"
+        needs: [flutter-test, flutter-analyze]
         runs-on: "macos-latest"
         permissions: write-all
 

@@ -11,7 +11,7 @@ import 'package:kazumi/plugins/plugins_controller.dart';
 import 'package:kazumi/plugins/plugins.dart';
 import 'package:kazumi/pages/video/video_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:kazumi/request/query_manager.dart';
+import 'package:kazumi/request/apis/query_manager.dart';
 import 'package:kazumi/pages/collect/collect_controller.dart';
 import 'package:kazumi/bean/widget/error_widget.dart';
 import 'dart:async';
@@ -93,7 +93,8 @@ class _SourceSheetState extends State<SourceSheet>
     _captchaProvider?.dispose();
     _captchaProvider = CaptchaProvider();
 
-    final searchUrl = plugin.searchURL.replaceAll('@keyword', Uri.encodeQueryComponent(keyword));
+    final searchUrl = plugin.searchURL
+        .replaceAll('@keyword', Uri.encodeQueryComponent(keyword));
 
     _captchaProvider!.loadForCaptcha(
       searchUrl,
@@ -286,7 +287,8 @@ class _SourceSheetState extends State<SourceSheet>
     _captchaProvider?.dispose();
     _captchaProvider = CaptchaProvider();
 
-    final searchUrl = plugin.searchURL.replaceAll('@keyword', Uri.encodeQueryComponent(keyword));
+    final searchUrl = plugin.searchURL
+        .replaceAll('@keyword', Uri.encodeQueryComponent(keyword));
 
     void onVerified() {
       if (autoVerified) return;
@@ -415,7 +417,72 @@ class _SourceSheetState extends State<SourceSheet>
         ],
       );
     }
-    return ListView(children: cardList);
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            children: cardList,
+          ),
+        ),
+        if (cardList.isNotEmpty) showSupplementarySearchEntry(plugin.name),
+      ],
+    );
+  }
+
+  /// 构建结果列表底部补充检索入口，便于已有结果不准确时换用别名或手动检索关键词
+  Widget showSupplementarySearchEntry(String pluginName) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 2,
+              runSpacing: 4,
+              children: [
+                Text(
+                  '结果不准确？',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.color
+                            ?.withValues(alpha: 0.75),
+                      ),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    minimumSize: Size.zero,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    textStyle: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  onPressed: () => showAliasSearchDialog(pluginName),
+                  child: const Text('别名检索'),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    minimumSize: Size.zero,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    textStyle: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  onPressed: () => showCustomSearchDialog(pluginName),
+                  child: const Text('手动检索'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void showAliasSearchDialog(String pluginName) {
@@ -608,7 +675,8 @@ class _SourceSheetState extends State<SourceSheet>
                     launchUrl(
                       Uri.parse(pluginsController
                           .pluginList[currentIndex].searchURL
-                          .replaceFirst('@keyword', Uri.encodeQueryComponent(keyword))),
+                          .replaceFirst(
+                              '@keyword', Uri.encodeQueryComponent(keyword))),
                       mode: LaunchMode.externalApplication,
                     );
                   },

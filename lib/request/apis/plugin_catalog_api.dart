@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:kazumi/utils/logger.dart';
-import 'package:kazumi/request/api.dart';
-import 'package:kazumi/request/request.dart';
+import 'package:kazumi/request/config/api_endpoints.dart';
+import 'package:kazumi/request/clients/github_client.dart';
 import 'package:kazumi/plugins/plugins.dart';
 import 'package:kazumi/modules/plugin/plugin_http_module.dart';
 import 'package:kazumi/utils/storage.dart';
@@ -16,7 +16,8 @@ class PluginSourceRepository {
   final String pluginBaseUrl;
 }
 
-class PluginHTTP {
+class PluginCatalogApi {
+  static final GithubClient _client = GithubClient.instance;
   static PluginSourceRepository? _cachedRepository;
   static String? _cachedConfiguredIndexUrl;
 
@@ -54,12 +55,12 @@ class PluginHTTP {
   static String _configuredIndexUrl() {
     final configured = GStorage.setting.get(
       SettingBoxKey.pluginSourceIndexUrl,
-      defaultValue: Api.defaultPluginSourceIndex,
+      defaultValue: ApiEndpoints.defaultPluginSourceIndex,
     );
     if (configured is String && configured.trim().isNotEmpty) {
       return _normalizeIndexUrl(configured);
     }
-    return _normalizeIndexUrl(Api.defaultPluginSourceIndex);
+    return _normalizeIndexUrl(ApiEndpoints.defaultPluginSourceIndex);
   }
 
   static Future<PluginSourceRepository?> _resolveRepository({
@@ -74,13 +75,13 @@ class PluginHTTP {
 
     final candidates = <String>{
       configuredIndexUrl,
-      _normalizeIndexUrl(Api.pluginShop),
+      _normalizeIndexUrl(ApiEndpoints.pluginShop),
     };
 
     for (final indexUrl in candidates) {
       try {
-        final res = await Request().get(indexUrl);
-        final jsonData = _decodeJsonList(res.data);
+        final raw = await _client.getText(indexUrl);
+        final jsonData = _decodeJsonList(raw);
         if (jsonData.isEmpty) {
           continue;
         }
@@ -116,12 +117,12 @@ class PluginHTTP {
       if (repository == null) {
         return pluginHTTPItemList;
       }
-      var res = await Request().get(repository.indexUrl);
-      final jsonData = _decodeJsonList(res.data);
+      final raw = await _client.getText(repository.indexUrl);
+      final jsonData = _decodeJsonList(raw);
       for (dynamic pluginJsonItem in jsonData) {
         try {
-          PluginHTTPItem pluginHTTPItem = PluginHTTPItem.fromJson(
-              Map<String, dynamic>.from(pluginJsonItem));
+          PluginHTTPItem pluginHTTPItem =
+              PluginHTTPItem.fromJson(Map<String, dynamic>.from(pluginJsonItem));
           pluginHTTPItemList.add(pluginHTTPItem);
         } catch (_) {}
       }
@@ -138,8 +139,8 @@ class PluginHTTP {
       if (repository == null) {
         return null;
       }
-      var res = await Request().get('${repository.pluginBaseUrl}$name.json');
-      final jsonData = json.decode(res.data);
+      final raw = await _client.getText('${repository.pluginBaseUrl}$name.json');
+      final jsonData = json.decode(raw);
       plugin = Plugin.fromJson(jsonData);
     } catch (e) {
       KazumiLogger().e('Plugin: getPlugin error: ${e.toString()}');

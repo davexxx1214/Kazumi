@@ -1,6 +1,7 @@
-class Api {
+class ApiEndpoints {
   /// 当前版本
-  static const String version = '2.0.8';
+  static const String version = '2.1.1';
+
   /// 规则API级别
   static const int apiLevel = 6;
 
@@ -17,7 +18,7 @@ class Api {
   static const String defaultPluginSourceIndex =
       'https://raw.githubusercontent.com/venera-app/venera-configs/master/index.json';
 
-  /// 当前兼容的规则仓库
+  /// 规则仓库
   static const String pluginShop =
       'https://raw.githubusercontent.com/Predidit/KazumiRules/main/';
 
@@ -49,6 +50,16 @@ class Api {
 
   /// 从条目ID获取剧集ID
   static const String bangumiEpisodeByID = '/v0/episodes';
+
+  /// 返回当前 Access Token 对应的用户信息
+  static const String bangumiUsernameByToken = '/v0/me';
+
+  /// 新增或修改用户单个条目收藏
+  static const String bangumiSetCollection = '/v0/users/-/collections/{0}';
+
+  /// 获取用户收藏。用户名，分页参数1，分页参数2
+  static const String bangumiGetCollection =
+      '/v0/users/{0}/collections?subject_type=2&limit={1}&offset={2}&type={3}';
 
   /// Bangumi Next API Domain
   static const String bangumiAPINextDomain = 'https://next.bgm.tv';
