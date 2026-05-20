@@ -540,18 +540,18 @@ class _PlayerItemState extends State<PlayerItem>
   void _handleTVSpeedUp() {
     final double defaultShortcutForwardPlaySpeed = setting
         .get(SettingBoxKey.defaultShortcutForwardPlaySpeed, defaultValue: 2.0);
-    if (!playerController.showPlaySpeed) {
-      lastPlayerSpeed = playerController.playerSpeed;
+    if (!playerController.panel.showPlaySpeed) {
+      lastPlayerSpeed = playerController.playback.playerSpeed;
     }
-    playerController.showPlaySpeed = true;
-    if (playerController.playerSpeed < defaultShortcutForwardPlaySpeed) {
+    playerController.panel.showPlaySpeed = true;
+    if (playerController.playback.playerSpeed < defaultShortcutForwardPlaySpeed) {
       unawaited(setPlaybackSpeed(defaultShortcutForwardPlaySpeed));
     }
   }
 
   void _handleTVRestoreSpeed() {
-    playerController.showPlaySpeed = false;
-    if (playerController.playerSpeed != lastPlayerSpeed) {
+    playerController.panel.showPlaySpeed = false;
+    if (playerController.playback.playerSpeed != lastPlayerSpeed) {
       unawaited(setPlaybackSpeed(lastPlayerSpeed));
     }
   }
@@ -666,7 +666,7 @@ class _PlayerItemState extends State<PlayerItem>
         _tvMode = TVPlayerMode.sideMenu;
       });
       videoPageController.showTabBody = true;
-      widget.openMenu();
+      widget.showMenuImmediately();
     }
     return KeyEventResult.handled;
   }
@@ -676,7 +676,7 @@ class _PlayerItemState extends State<PlayerItem>
     switch (_tvMode) {
       case TVPlayerMode.fullscreen:
         // 全屏模式：确定键切换播放/暂停
-        if (playerController.playing) {
+        if (playerController.playback.playing) {
           // 暂停并显示进度条
           playerController.pause();
           displayVideoController();
@@ -719,7 +719,7 @@ class _PlayerItemState extends State<PlayerItem>
 
   /// TV版本：临时显示进度条，一段时间后自动隐藏
   void _showProgressBarTemporarily() {
-    if (!playerController.showVideoController) {
+    if (!playerController.panel.showVideoController) {
       displayVideoController();
     }
     // 取消之前的隐藏定时器，重新开始计时

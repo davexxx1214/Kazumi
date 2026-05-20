@@ -1201,8 +1201,7 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                       _buildTVFocusButton(
                         icon: const Icon(Icons.menu_open_rounded),
                         onPressed: () {
-                          videoPageController.showTabBody = !videoPageController.showTabBody;
-                          widget.openMenu();
+                          widget.toggleMenu();
                         },
                         tooltip: '剧集列表',
                       ),
