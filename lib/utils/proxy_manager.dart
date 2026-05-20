@@ -1,5 +1,4 @@
-import 'package:kazumi/request/core/dio_factory.dart';
-import 'package:kazumi/utils/logger.dart';
+import 'package:kazumi/request/request.dart';
 
 /// 代理管理器
 /// 统一管理 Dio HTTP 请求的代理设置
@@ -9,13 +8,11 @@ class ProxyManager {
 
   /// 应用代理设置
   static void applyProxy() {
-    DioFactory.reset();
-    KazumiLogger().i('Proxy: 网络客户端配置已刷新');
+    Request.setProxy();
   }
 
   /// 清除代理设置
   static void clearProxy() {
-    DioFactory.reset();
-    KazumiLogger().i('Proxy: 网络客户端代理已清除');
+    Request.disableProxy();
   }
 }

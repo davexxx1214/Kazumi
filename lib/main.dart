@@ -7,6 +7,7 @@ import 'package:kazumi/bean/settings/theme_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:kazumi/utils/storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:kazumi/request/request.dart';
 import 'package:kazumi/utils/proxy_manager.dart';
 import 'package:flutter/services.dart';
 import 'package:kazumi/utils/utils.dart';
@@ -40,10 +41,11 @@ void main() async {
     // Log the error for debugging (if logger is available)
     debugPrint('Storage initialization failed: $e');
 
-    if (Utils.isDesktop()) {
+    if (Platform.isWindows) {
       await windowManager.ensureInitialized();
       windowManager.waitUntilReadyToShow(null, () async {
-        // window_manager controls desktop visibility to avoid startup flicker.
+        // Native window show has been blocked in `flutter_windows.cppL36` to avoid flickering.
+        // Without this. the window will never show on Windows.
         await windowManager.show();
         await windowManager.focus();
       });
@@ -79,11 +81,14 @@ void main() async {
       title: 'Kazumi',
     );
     windowManager.waitUntilReadyToShow(windowOptions, () async {
-      // window_manager controls desktop visibility to avoid startup flicker.
+      // Native window show has been blocked in `flutter_windows.cppL36` to avoid flickering.
+      // Without this. the window will never show on Windows.
       await windowManager.show();
       await windowManager.focus();
     });
   }
+  Request();
+  await Request.setCookie();
   ProxyManager.applyProxy();
   runApp(
     ChangeNotifierProvider(

@@ -1,27 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/pages/player/player_controller.dart';
 
 class PlayerItemSurface extends StatefulWidget {
-  const PlayerItemSurface({
-    super.key,
-    required this.playerController,
-  });
-
-  final PlayerController playerController;
+  const PlayerItemSurface({super.key});
 
   @override
   State<PlayerItemSurface> createState() => _PlayerItemSurfaceState();
 }
 
 class _PlayerItemSurfaceState extends State<PlayerItemSurface> {
+  final PlayerController playerController = Modular.get<PlayerController>();
+
   @override
   Widget build(BuildContext context) {
-    final playerController = widget.playerController;
     return Observer(builder: (context) {
-      if (playerController.playback.loading ||
-          playerController.playback.videoController == null) {
+      if (playerController.loading ||
+          playerController.videoController == null) {
         return Container(
           color: Colors.black,
           child: const Center(
@@ -31,12 +28,12 @@ class _PlayerItemSurfaceState extends State<PlayerItemSurface> {
       }
 
       return Video(
-        controller: playerController.playback.videoController!,
+        controller: playerController.videoController!,
         controls: NoVideoControls,
         pauseUponEnteringBackgroundMode: false,
-        fit: playerController.panel.aspectRatioType == 1
+        fit: playerController.aspectRatioType == 1
             ? BoxFit.contain
-            : playerController.panel.aspectRatioType == 2
+            : playerController.aspectRatioType == 2
                 ? BoxFit.cover
                 : BoxFit.fill,
         subtitleViewConfiguration: SubtitleViewConfiguration(

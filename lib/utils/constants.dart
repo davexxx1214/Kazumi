@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:kazumi/request/config/api_endpoints.dart';
+import 'package:kazumi/request/api.dart';
 
 /// 是否为 TV 版本（通过 --dart-define=IS_TV=true 构建时传入）
 const bool isTV = bool.fromEnvironment('IS_TV', defaultValue: false);
@@ -94,7 +93,7 @@ const List<String> acceptLanguageList = [
 /// Bangumi API 文档要求的UA格式
 Map<String, String> bangumiHTTPHeader = {
   'user-agent':
-      'Predidit/Kazumi/${ApiEndpoints.version} (Android) (https://github.com/Predidit/Kazumi)',
+      'Predidit/Kazumi/${Api.version} (Android) (https://github.com/Predidit/Kazumi)',
   'referer': '',
   'content-type': 'application/json'
 };
@@ -272,36 +271,36 @@ enum TVPlayerMode {
 }
 
 // 键位别名
-final Map<String, String> keyAliases = {
-  ' ': '空格',
-  'Arrow Up': '↑',
-  'Arrow Down': '↓',
-  'Arrow Left': '←',
-  'Arrow Right': '→',
-  'Enter': '回车',
-  'Tab': 'Tab',
-  'Escape': 'Esc',
-  'Backspace': '退格',
-};
+  final Map<String, String> keyAliases = {
+    ' ': '空格',
+    'Arrow Up': '↑',
+    'Arrow Down': '↓',
+    'Arrow Left': '←',
+    'Arrow Right': '→',
+    'Enter': '回车',
+    'Tab': 'Tab',
+    'Escape': 'Esc',
+    'Backspace': '退格',
+  };
 
 //功能中文名对应
-final Map<String, String> shortcutsChineseName = {
-  'playorpause': '播放 / 暂停',
-  'forward': '快进 / 长按倍速',
-  'rewind': '快退',
-  'next': '下一集',
-  'prev': '上一集',
-  'volumeup': '音量加',
-  'volumedown': '音量减',
-  'togglemute': '静音',
-  'fullscreen': '全屏',
-  'exitfullscreen': '退出全屏',
-  'toggledanmaku': '弹幕开关',
-  'screenshot': '截图',
-  'skip': '跳过',
-  'speed1': '倍速：1x',
-  'speed2': '倍速：2x',
-  'speed3': '倍速：3x',
-  'speedup': '倍速加',
-  'speeddown': '倍速减',
-};
+  final Map<String, String> shortcutsChineseName = {
+    'playorpause': '播放 / 暂停',
+    'forward': '快进',
+    'rewind': '快退',
+    'next': '下一集',
+    'prev': '上一集',
+    'volumeup': '音量加',
+    'volumedown': '音量减',
+    'togglemute': '静音',
+    'fullscreen': '全屏',
+    'exitfullscreen': '退出全屏',
+    'toggledanmaku': '弹幕开关',
+    'screenshot': '截图',
+    'skip': '跳过',
+    'speed1': '倍速：1x',
+    'speed2': '倍速：2x',
+    'speed3': '倍速：3x',
+    'speedup': '倍速加',
+    'speeddown': '倍速减',
+  };

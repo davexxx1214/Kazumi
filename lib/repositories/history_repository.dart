@@ -1,7 +1,6 @@
 import 'package:kazumi/utils/storage.dart';
 import 'package:kazumi/modules/bangumi/bangumi_item.dart';
 import 'package:kazumi/modules/history/history_module.dart';
-import 'package:kazumi/utils/history_sync_service.dart';
 import 'package:kazumi/utils/logger.dart';
 
 /// 历史记录数据访问接口
@@ -42,8 +41,7 @@ abstract class IHistoryRepository {
   /// [bangumiItem] 番剧信息
   /// [adapterName] 适配器名称
   /// 返回观看进度，不存在返回null
-  Progress? getLastWatchingProgress(
-      BangumiItem bangumiItem, String adapterName);
+  Progress? getLastWatchingProgress(BangumiItem bangumiItem, String adapterName);
 
   /// 查找特定集数的观看进度
   ///
@@ -51,8 +49,7 @@ abstract class IHistoryRepository {
   /// [adapterName] 适配器名称
   /// [episode] 集数
   /// 返回观看进度，不存在返回null
-  Progress? findProgress(
-      BangumiItem bangumiItem, String adapterName, int episode);
+  Progress? findProgress(BangumiItem bangumiItem, String adapterName, int episode);
 
   /// 删除历史记录
   ///
@@ -64,8 +61,7 @@ abstract class IHistoryRepository {
   /// [bangumiItem] 番剧信息
   /// [adapterName] 适配器名称
   /// [episode] 集数
-  Future<void> clearProgress(
-      BangumiItem bangumiItem, String adapterName, int episode);
+  Future<void> clearProgress(BangumiItem bangumiItem, String adapterName, int episode);
 
   /// 清空所有历史记录
   Future<void> clearAllHistories();
@@ -132,10 +128,8 @@ class HistoryRepository implements IHistoryRepository {
       }
 
       // 获取或创建历史记录
-      var history =
-          _historiesBox.get(History.getKey(adapterName, bangumiItem)) ??
-              History(bangumiItem, episode, adapterName, DateTime.now(),
-                  lastSrc, lastWatchEpisodeName);
+      var history = _historiesBox.get(History.getKey(adapterName, bangumiItem)) ??
+          History(bangumiItem, episode, adapterName, DateTime.now(), lastSrc, lastWatchEpisodeName);
 
       // 更新历史记录
       history.lastWatchEpisode = episode;
@@ -158,14 +152,6 @@ class HistoryRepository implements IHistoryRepository {
 
       // 保存到存储
       await _historiesBox.put(history.key, history);
-      await HistorySyncService().appendSafely(
-        () => HistorySyncService().appendUpsertProgress(
-          history: history,
-          episode: episode,
-          road: road,
-          progressMs: progress.inMilliseconds,
-        ),
-      );
     } catch (e, stackTrace) {
       KazumiLogger().e(
         'GStorage: update history failed. bangumi=${bangumiItem.name}, episode=$episode',
@@ -176,8 +162,7 @@ class HistoryRepository implements IHistoryRepository {
   }
 
   @override
-  Progress? getLastWatchingProgress(
-      BangumiItem bangumiItem, String adapterName) {
+  Progress? getLastWatchingProgress(BangumiItem bangumiItem, String adapterName) {
     try {
       var history = _historiesBox.get(History.getKey(adapterName, bangumiItem));
       return history?.progresses[history.lastWatchEpisode];
@@ -192,8 +177,7 @@ class HistoryRepository implements IHistoryRepository {
   }
 
   @override
-  Progress? findProgress(
-      BangumiItem bangumiItem, String adapterName, int episode) {
+  Progress? findProgress(BangumiItem bangumiItem, String adapterName, int episode) {
     try {
       var history = _historiesBox.get(History.getKey(adapterName, bangumiItem));
       return history?.progresses[episode];
@@ -211,9 +195,6 @@ class HistoryRepository implements IHistoryRepository {
   Future<void> deleteHistory(History history) async {
     try {
       await _historiesBox.delete(history.key);
-      await HistorySyncService().appendSafely(
-        () => HistorySyncService().appendDeleteHistory(history),
-      );
     } catch (e, stackTrace) {
       KazumiLogger().e(
         'GStorage: delete history failed. bangumi=${history.bangumiItem.name}',
@@ -224,22 +205,12 @@ class HistoryRepository implements IHistoryRepository {
   }
 
   @override
-  Future<void> clearProgress(
-      BangumiItem bangumiItem, String adapterName, int episode) async {
+  Future<void> clearProgress(BangumiItem bangumiItem, String adapterName, int episode) async {
     try {
       var history = _historiesBox.get(History.getKey(adapterName, bangumiItem));
       if (history != null && history.progresses[episode] != null) {
         history.progresses[episode]!.progress = Duration.zero;
         await _historiesBox.put(history.key, history);
-        await HistorySyncService().appendSafely(
-          () => HistorySyncService().appendUpsertProgress(
-            history: history,
-            episode: episode,
-            road: history.progresses[episode]!.road,
-            progressMs: 0,
-            updatedAt: DateTime.now().millisecondsSinceEpoch,
-          ),
-        );
       }
     } catch (e, stackTrace) {
       KazumiLogger().e(
@@ -254,9 +225,6 @@ class HistoryRepository implements IHistoryRepository {
   Future<void> clearAllHistories() async {
     try {
       await _historiesBox.clear();
-      await HistorySyncService().appendSafely(
-        () => HistorySyncService().appendClearAll(),
-      );
     } catch (e, stackTrace) {
       KazumiLogger().e(
         'GStorage: clear all histories failed',

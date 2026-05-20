@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/pages/my/my_controller.dart';
-import 'package:kazumi/utils/bangumi_sync_service.dart';
 import 'package:kazumi/utils/webdav.dart';
 import 'package:kazumi/utils/storage.dart';
 import 'package:kazumi/plugins/plugins_controller.dart';
@@ -11,7 +10,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/pages/collect/collect_controller.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:kazumi/utils/logger.dart';
-import 'package:kazumi/request/config/api_endpoints.dart';
+import 'package:kazumi/request/api.dart';
 import 'package:kazumi/utils/utils.dart';
 import 'package:provider/provider.dart';
 import 'package:kazumi/bean/settings/theme_provider.dart';
@@ -49,7 +48,6 @@ class _InitPageState extends State<InitPage> {
     _loadShaders();
     _loadDanmakuShield();
     _webDavInit();
-    _bangumiInit();
     try {
       await downloadController.init();
       _setupBackgroundDownloadNavigation();
@@ -148,45 +146,13 @@ class _InitPageState extends State<InitPage> {
       try {
         await webDav.init();
         try {
-          await webDav.syncHistory();
+          await webDav.downloadAndPatchHistory();
           KazumiLogger().i('WebDav: Completed syncing watch history');
-        } catch (e, stackTrace) {
-          KazumiLogger().w(
-            'WebDav: automatic watch history sync failed',
-            error: e,
-            stackTrace: stackTrace,
-          );
+        } catch (e) {
+          KazumiDialog.showToast(message: "同步观看记录失败 ${e.toString()}");
         }
-      } catch (e, stackTrace) {
-        KazumiLogger().w(
-          'WebDav: automatic initialization failed',
-          error: e,
-          stackTrace: stackTrace,
-        );
-      }
-    }
-  }
-
-  Future<void> _bangumiInit() async {
-    bool bangumiEnable = await setting.get(
-      SettingBoxKey.bangumiSyncEnable,
-      defaultValue: false,
-    );
-    if (bangumiEnable) {
-      var bangumi = BangumiSyncService();
-      KazumiLogger().i('Bangumi: Starting Bangumi initialization');
-      try {
-        await bangumi.init();
       } catch (e) {
-        bangumi.reset();
-        await setting.put(SettingBoxKey.bangumiSyncEnable, false);
-        KazumiLogger().w(
-          'Bangumi: initialization failed, disabling Bangumi sync until user re-enables it',
-          error: e,
-        );
-        KazumiDialog.showToast(
-          message: '初始化Bangumi失败，已关闭 Bangumi 同步: ${e.toString()}',
-        );
+        KazumiDialog.showToast(message: "初始化WebDav失败 ${e.toString()}");
       }
     }
   }
@@ -233,9 +199,7 @@ class _InitPageState extends State<InitPage> {
 
   Future<void> _showShortcutDialog() async {
     if (!Platform.isWindows) return;
-    if (setting.get(SettingBoxKey.shortcutDialogShown, defaultValue: false)) {
-      return;
-    }
+    if (setting.get(SettingBoxKey.shortcutDialogShown, defaultValue: false)) return;
 
     final create = await KazumiDialog.show<bool>(
       clickMaskDismiss: false,
@@ -245,8 +209,7 @@ class _InitPageState extends State<InitPage> {
         actions: [
           TextButton(
             onPressed: () => KazumiDialog.dismiss(popWith: false),
-            child: Text('暂不创建',
-                style: TextStyle(color: Theme.of(context).colorScheme.outline)),
+            child: Text('暂不创建', style: TextStyle(color: Theme.of(context).colorScheme.outline)),
           ),
           TextButton(
             onPressed: () => KazumiDialog.dismiss(popWith: true),
@@ -320,7 +283,7 @@ class _InitPageState extends State<InitPage> {
     }
     await setting.put(
       SettingBoxKey.pluginSourceIndexUrl,
-      ApiEndpoints.defaultPluginSourceIndex,
+      Api.defaultPluginSourceIndex,
     );
   }
 

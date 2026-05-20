@@ -123,13 +123,9 @@ class _CollectButtonState extends State<CollectButton> {
       menuChildren: List<MenuItemButton>.generate(
         6,
         (int index) => MenuItemButton(
-          onPressed: () async {
+          onPressed: () {
             if (index != collectType && mounted) {
-              await collectController.addCollect(widget.bangumiItem, type: index);
-              // 防止状态错误刷新
-              if (!mounted) {
-                return;
-              }
+              collectController.addCollect(widget.bangumiItem, type: index);
               setState(() {});
             }
           },

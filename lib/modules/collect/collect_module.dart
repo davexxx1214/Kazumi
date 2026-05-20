@@ -1,6 +1,5 @@
 import 'package:hive_ce/hive.dart';
 import 'package:kazumi/modules/bangumi/bangumi_item.dart';
-import 'package:kazumi/modules/collect/collect_type.dart';
 
 part 'collect_module.g.dart';
 
@@ -12,7 +11,6 @@ class CollectedBangumi {
   @HiveField(1)
   DateTime time;
 
-  /// Refer to [CollectType]
   // 1. 在看
   // 2. 想看
   // 3. 搁置

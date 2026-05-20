@@ -1,7 +1,7 @@
-import 'package:kazumi/request/config/api_endpoints.dart';
+import 'package:kazumi/request/api.dart';
 import 'package:kazumi/modules/characters/character_item.dart';
 
-/// The response from [ApiEndpoints.bangumiInfoByID]
+/// The response from [Api.bangumiInfoByID]
 /// It contains a list of [CharacterItem]
 /// It is used to show general information about seraval bangumi characters
 class CharactersResponse {

@@ -4,12 +4,12 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kazumi/modules/danmaku/danmaku_module.dart';
-import 'package:kazumi/request/config/api_endpoints.dart';
-import 'package:kazumi/request/clients/github_client.dart';
+import 'package:kazumi/request/api.dart';
 import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/utils/logger.dart';
 import 'package:kazumi/utils/mortis.dart';
@@ -218,15 +218,12 @@ class Utils {
   static bool needUpdate(localVersion, remoteVersion) {
     List<String> localVersionList = localVersion.split('.');
     List<String> remoteVersionList = remoteVersion.split('.');
-    final maxLength = max(localVersionList.length, remoteVersionList.length);
-    for (int i = 0; i < maxLength; i++) {
-      final int localSegment =
-          i < localVersionList.length ? int.parse(localVersionList[i]) : 0;
-      final int remoteSegment =
-          i < remoteVersionList.length ? int.parse(remoteVersionList[i]) : 0;
-      if (remoteSegment > localSegment) {
+    for (int i = 0; i < localVersionList.length; i++) {
+      int localVersion = int.parse(localVersionList[i]);
+      int remoteVersion = int.parse(remoteVersionList[i]);
+      if (remoteVersion > localVersion) {
         return true;
-      } else if (remoteSegment < localSegment) {
+      } else if (remoteVersion < localVersion) {
         return false;
       }
     }
@@ -278,11 +275,17 @@ class Utils {
     return '${(similarity * 100).toStringAsFixed(fractionDigits)}%';
   }
 
+
   static Future<String> latest() async {
     try {
-      return await GithubClient.instance.latestVersion();
+      var resp = await Dio().get<Map<String, dynamic>>(Api.latestApp);
+      if (resp.data?.containsKey("tag_name") ?? false) {
+        return resp.data!["tag_name"];
+      } else {
+        throw resp.data?["message"];
+      }
     } catch (e) {
-      return ApiEndpoints.version;
+      return Api.version;
     }
   }
 
@@ -312,8 +315,8 @@ class Utils {
 
   static List<Danmaku> mergeDuplicateDanmakus(
     List<Danmaku> danmakus, {
-    double timeWindowSeconds = 0,
-  }) {
+      double timeWindowSeconds = 0,
+    }) {
     final Map<String, List<Danmaku>> grouped = {};
 
     // 弹幕规范化处理
@@ -338,12 +341,10 @@ class Utils {
 
       text = text.replaceAll(RegExp(r'\s+'), '');
 
-      text = text.replaceAll(
-          RegExp(
-            r'[^\w\u4e00-\u9fff\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uFF65-\uFF9F]',
-            unicode: true,
-          ),
-          '');
+      text = text.replaceAll(RegExp(
+        r'[^\w\u4e00-\u9fff\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uFF65-\uFF9F]',
+        unicode: true,
+      ),'');
 
       text = text.replaceAllMapped(RegExp(r'(.)\1{2,}'), (match) {
         final char = match.group(1)!;
@@ -393,8 +394,7 @@ class Utils {
           } else {
             result.add(
               Danmaku(
-                message:
-                    '${currentGroup.first.message} x${currentGroup.length}',
+                message: '${currentGroup.first.message} x${currentGroup.length}',
                 time: currentGroup.first.time,
                 type: 5,
                 color: Utils.generateDanmakuColor(0xFFFFFF),
@@ -526,14 +526,9 @@ class Utils {
       await windowManager.setFullScreen(true);
       return;
     }
-    if (Platform.isAndroid) {
-      const platform = MethodChannel('com.predidit.kazumi/intent');
-      await platform.invokeMethod('enterFullscreen');
-    } else {
-      await SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.immersiveSticky,
-      );
-    }
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.immersiveSticky,
+    );
     if (!lockOrientation) {
       return;
     }
@@ -569,14 +564,26 @@ class Utils {
     if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
       await windowManager.setFullScreen(false);
     }
+    late SystemUiMode mode = SystemUiMode.edgeToEdge;
     try {
       if (Platform.isAndroid || Platform.isIOS) {
         if (Platform.isAndroid) {
           const platform = MethodChannel('com.predidit.kazumi/intent');
-          await platform.invokeMethod('exitFullscreen');
-        } else {
-          await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+          try {
+            final int sdkVersion =
+                await platform.invokeMethod('getAndroidSdkVersion');
+            if (sdkVersion < 29) {
+              mode = SystemUiMode.manual;
+            }
+          } on PlatformException catch (e) {
+            KazumiLogger()
+                .e("Failed to get Android SDK version: '${e.message}'.");
+          }
         }
+        await SystemChrome.setEnabledSystemUIMode(
+          mode,
+          overlays: SystemUiOverlay.values,
+        );
         if (Utils.isCompact() && lockOrientation) {
           if (Platform.isAndroid) {
             bool isInMultiWindowMode = await Utils.isInMultiWindowMode();

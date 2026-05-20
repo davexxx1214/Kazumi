@@ -56,6 +56,7 @@ abstract class ICollectCrudRepository {
 /// 基于Hive实现的收藏CRUD数据访问层
 class CollectCrudRepository implements ICollectCrudRepository {
   final _collectiblesBox = GStorage.collectibles;
+  final _collectChangesBox = GStorage.collectChanges;
   final _favoritesBox = GStorage.favorites;
 
   @override
@@ -106,7 +107,8 @@ class CollectCrudRepository implements ICollectCrudRepository {
         DateTime.now(),
         type,
       );
-      await GStorage.putCollectible(collectedBangumi);
+      await _collectiblesBox.put(bangumiItem.id, collectedBangumi);
+      await _collectiblesBox.flush();
     } catch (e, stackTrace) {
       KazumiLogger().e(
         'GStorage: add collectible failed. id=${bangumiItem.id}, type=$type',
@@ -128,7 +130,8 @@ class CollectCrudRepository implements ICollectCrudRepository {
         return;
       }
       collectible.bangumiItem = bangumiItem;
-      await GStorage.putCollectible(collectible);
+      await _collectiblesBox.put(bangumiItem.id, collectible);
+      await _collectiblesBox.flush();
     } catch (e, stackTrace) {
       KazumiLogger().e(
         'GStorage: update collectible failed. id=${bangumiItem.id}',
@@ -142,7 +145,8 @@ class CollectCrudRepository implements ICollectCrudRepository {
   @override
   Future<void> deleteCollectible(int id) async {
     try {
-      await GStorage.deleteCollectible(id);
+      await _collectiblesBox.delete(id);
+      await _collectiblesBox.flush();
     } catch (e, stackTrace) {
       KazumiLogger().e(
         'GStorage: delete collectible failed. id=$id',
@@ -156,7 +160,8 @@ class CollectCrudRepository implements ICollectCrudRepository {
   @override
   Future<void> addCollectChange(CollectedBangumiChange change) async {
     try {
-      await GStorage.putCollectChange(change);
+      await _collectChangesBox.put(change.id, change);
+      await _collectChangesBox.flush();
     } catch (e, stackTrace) {
       KazumiLogger().e(
         'GStorage: record collect change failed. changeId=${change.id}',

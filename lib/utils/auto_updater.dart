@@ -3,9 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
-import 'package:kazumi/request/clients/download_http_client.dart';
-import 'package:kazumi/request/clients/github_client.dart';
-import 'package:kazumi/request/config/api_endpoints.dart';
+import 'package:kazumi/request/api.dart';
 import 'package:kazumi/utils/logger.dart';
 import 'package:kazumi/utils/storage.dart';
 import 'package:kazumi/utils/utils.dart';
@@ -63,8 +61,7 @@ class AutoUpdater {
 
   AutoUpdater._internal();
 
-  final GithubClient _githubClient = GithubClient.instance;
-  final DownloadHttpClient _downloadClient = DownloadHttpClient.instance;
+  final Dio _dio = Dio();
 
   Box get setting => GStorage.setting;
 
@@ -105,14 +102,15 @@ class AutoUpdater {
   /// 检查是否有新版本可用
   Future<UpdateInfo?> checkForUpdates() async {
     try {
-      final data = await _githubClient.latestRelease();
+      final response = await _dio.get(Api.latestApp);
+      final data = response.data;
 
-      if (!data.containsKey('tag_name')) {
+      if (data == null || !data.containsKey('tag_name')) {
         throw Exception('无效的响应数据');
       }
 
       final remoteVersion = data['tag_name'] as String;
-      final currentVersion = ApiEndpoints.version;
+      final currentVersion = Api.version;
 
       if (Utils.needUpdate(currentVersion, remoteVersion)) {
         final availableTypes = await _detectAvailableInstallationTypes();
@@ -345,7 +343,7 @@ class AutoUpdater {
           selectedType == InstallationType.linuxTar) {
         String releaseUrl = updateInfo.releaseNotes;
         if (releaseUrl.isEmpty) {
-          releaseUrl = ApiEndpoints.latestApp;
+          releaseUrl = Api.latestApp;
         }
         launchUrl(Uri.parse(releaseUrl), mode: LaunchMode.externalApplication);
         return;
@@ -601,8 +599,7 @@ class AutoUpdater {
         final localHash = await Utils.calculateFileHash(file);
         if (localHash == expectedHash) {
           // 文件已存在且哈希匹配，直接返回
-          KazumiLogger().i(
-              'Update: file already exists and hash verified, skipping download: $filePath');
+          KazumiLogger().i('Update: file already exists and hash verified, skipping download: $filePath');
           _downloadProgress.value = 1.0;
           return filePath;
         } else {
@@ -613,9 +610,7 @@ class AutoUpdater {
         }
       } catch (e) {
         // 验证过程中出错，删除文件重新下载
-        KazumiLogger().w(
-            'Update: file verification failed, deleting and re-downloading',
-            error: e);
+        KazumiLogger().w('Update: file verification failed, deleting and re-downloading', error: e);
         if (await file.exists()) {
           await file.delete();
         }
@@ -624,7 +619,7 @@ class AutoUpdater {
 
     _cancelToken = CancelToken();
 
-    await _downloadClient.download(
+    await _dio.download(
       url,
       filePath,
       cancelToken: _cancelToken,
@@ -709,9 +704,7 @@ class AutoUpdater {
           final arg = '/select,${filePath.replaceAll('/', r'\')}';
           await Process.start('explorer.exe', [arg], runInShell: true);
         } else {
-          await Process.start(
-              'explorer.exe', [targetDirOrFile.replaceAll('/', r'\')],
-              runInShell: true);
+          await Process.start('explorer.exe', [targetDirOrFile.replaceAll('/', r'\')], runInShell: true);
         }
       } else if (Platform.isMacOS) {
         if (type == FileSystemEntityType.file) {
