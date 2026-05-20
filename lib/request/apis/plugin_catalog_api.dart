@@ -18,6 +18,7 @@ class PluginSourceRepository {
 
 class PluginCatalogApi {
   static final GithubClient _client = GithubClient.instance;
+
   static PluginSourceRepository? _cachedRepository;
   static String? _cachedConfiguredIndexUrl;
 
@@ -80,8 +81,8 @@ class PluginCatalogApi {
 
     for (final indexUrl in candidates) {
       try {
-        final raw = await _client.getText(indexUrl);
-        final jsonData = _decodeJsonList(raw);
+        final res = await _client.getText(indexUrl);
+        final jsonData = _decodeJsonList(res);
         if (jsonData.isEmpty) {
           continue;
         }
@@ -117,12 +118,12 @@ class PluginCatalogApi {
       if (repository == null) {
         return pluginHTTPItemList;
       }
-      final raw = await _client.getText(repository.indexUrl);
-      final jsonData = _decodeJsonList(raw);
+      var res = await _client.getText(repository.indexUrl);
+      final jsonData = _decodeJsonList(res);
       for (dynamic pluginJsonItem in jsonData) {
         try {
-          PluginHTTPItem pluginHTTPItem =
-              PluginHTTPItem.fromJson(Map<String, dynamic>.from(pluginJsonItem));
+          PluginHTTPItem pluginHTTPItem = PluginHTTPItem.fromJson(
+              Map<String, dynamic>.from(pluginJsonItem));
           pluginHTTPItemList.add(pluginHTTPItem);
         } catch (_) {}
       }
@@ -139,8 +140,8 @@ class PluginCatalogApi {
       if (repository == null) {
         return null;
       }
-      final raw = await _client.getText('${repository.pluginBaseUrl}$name.json');
-      final jsonData = json.decode(raw);
+      var res = await _client.getText('${repository.pluginBaseUrl}$name.json');
+      final jsonData = json.decode(res);
       plugin = Plugin.fromJson(jsonData);
     } catch (e) {
       KazumiLogger().e('Plugin: getPlugin error: ${e.toString()}');

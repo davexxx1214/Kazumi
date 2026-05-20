@@ -1133,7 +1133,7 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                 Container(
                   padding: const EdgeInsets.only(left: 10.0, bottom: 10),
                   child: Text(
-                    "${Utils.durationToString(playerController.currentPosition)} / ${Utils.durationToString(playerController.duration)}",
+                    "${Utils.durationToString(playerController.playback.currentPosition)} / ${Utils.durationToString(playerController.playback.duration)}",
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14.0,
@@ -1157,9 +1157,9 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                         FontFeature.tabularFigures(),
                       ],
                     ),
-                    progress: playerController.currentPosition,
-                    buffered: playerController.buffer,
-                    total: playerController.duration,
+                    progress: playerController.playback.currentPosition,
+                    buffered: playerController.playback.buffer,
+                    total: playerController.playback.duration,
                     onSeek: (duration) {
                       playerController.seek(duration);
                     },
@@ -1173,11 +1173,11 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                     children: [
                       // 播放/暂停
                       _buildTVFocusButton(
-                        icon: Icon(playerController.playing
+                        icon: Icon(playerController.playback.playing
                             ? Icons.pause_rounded
                             : Icons.play_arrow_rounded),
                         onPressed: () => playerController.playOrPause(),
-                        tooltip: playerController.playing ? '暂停' : '播放',
+                        tooltip: playerController.playback.playing ? '暂停' : '播放',
                         autofocus: true, // 第一个按钮自动获取焦点
                       ),
                       const SizedBox(width: 16),
@@ -1190,11 +1190,11 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                       const SizedBox(width: 16),
                       // 弹幕开关
                       _buildTVFocusButton(
-                        icon: playerController.danmakuOn
+                        icon: playerController.danmaku.danmakuOn
                             ? danmakuOnIcon(context)
                             : cachedDanmakuOffIcon!,
                         onPressed: () => widget.handleDanmaku(),
-                        tooltip: playerController.danmakuOn ? '关闭弹幕' : '打开弹幕',
+                        tooltip: playerController.danmaku.danmakuOn ? '关闭弹幕' : '打开弹幕',
                       ),
                       const SizedBox(width: 16),
                       // 剧集列表
@@ -1218,11 +1218,17 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
     );
   }
 
+    
+    return Observer(
+      builder: (context) {
+        return SafeArea(
+=======
   Widget get topControlWidget {
     return Observer(builder: (context) {
       return EmbeddedNativeControlArea(
         requireOffset: !videoPageController.isFullscreen,
         child: SafeArea(
+>>>>>>> origin/main
           top: false,
           bottom: false,
           left: videoPageController.isFullscreen,

@@ -440,7 +440,7 @@ class _VideoPageState extends State<VideoPage>
     }
     // TV版本：优先检查是否需要关闭侧边菜单
     if (isTV && videoPageController.showTabBody) {
-      closeTabBodyAnimated();
+      _closeTabBodyAnimated();
       return;
     }
     if (videoPageController.isFullscreen && !Utils.isTablet()) {
@@ -1058,8 +1058,8 @@ class _VideoPageState extends State<VideoPage>
             int count = 1;
             for (var urlItem in road.data) {
               int count0 = count;
-              final bool isCurrent = count0 == videoPageController.currentEpisode &&
-                  videoPageController.currentRoad == currentRoad;
+              final bool isCurrent = count0 == videoPageController.selectedEpisode.episode &&
+                  visibleRoad == videoPageController.selectedEpisode.road;
 
               Widget card = Container(
                 margin: const EdgeInsets.only(bottom: 4),
@@ -1129,8 +1129,8 @@ class _VideoPageState extends State<VideoPage>
                           event.logicalKey == LogicalKeyboardKey.gameButtonA) {
                         if (!isCurrent) {
                           KazumiLogger().i('VideoPageController: video URL is $urlItem');
-                          closeTabBodyAnimated();
-                          changeEpisode(count0, currentRoad: currentRoad);
+                          _closeTabBodyAnimated();
+                          changeEpisode(count0, currentRoad: visibleRoad);
                         }
                         return KeyEventResult.handled;
                       }
@@ -1163,8 +1163,8 @@ class _VideoPageState extends State<VideoPage>
                                 return;
                               }
                               KazumiLogger().i('VideoPageController: video URL is $urlItem');
-                              closeTabBodyAnimated();
-                              changeEpisode(count0, currentRoad: currentRoad);
+                              _closeTabBodyAnimated();
+                              changeEpisode(count0, currentRoad: visibleRoad);
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(

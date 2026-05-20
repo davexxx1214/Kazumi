@@ -11,7 +11,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/pages/collect/collect_controller.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:kazumi/utils/logger.dart';
-import 'package:kazumi/request/config/api_endpoints.dart';
+import 'package:kazumi/request/api.dart';
 import 'package:kazumi/utils/utils.dart';
 import 'package:provider/provider.dart';
 import 'package:kazumi/bean/settings/theme_provider.dart';
@@ -320,7 +320,7 @@ class _InitPageState extends State<InitPage> {
     }
     await setting.put(
       SettingBoxKey.pluginSourceIndexUrl,
-      ApiEndpoints.defaultPluginSourceIndex,
+      Api.defaultPluginSourceIndex,
     );
   }
 

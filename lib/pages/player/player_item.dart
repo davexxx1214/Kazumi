@@ -384,7 +384,9 @@ class _PlayerItemState extends State<PlayerItem>
   Future<void> handleShortcutRewind() async {
     int skipTime = playerController.playback.arrowKeySkipTime;
     int current = playerController.playback.currentPosition.inSeconds;
-    int targetPosition = current - skipTime;
+    int targetPosition;
+
+    targetPosition = current - skipTime;
     if (targetPosition < 0) targetPosition = 0;
 
     try {
@@ -409,54 +411,77 @@ class _PlayerItemState extends State<PlayerItem>
 
   // 快进快捷键动作
   Future<void> handleShortcutForwardDown() async {
-    lastPlayerSpeed = playerController.playback.playerSpeed;
+    if (isTV) {
+      await _seekByArrowOffset(playerController.playback.arrowKeySkipTime);
+    } else {
+      lastPlayerSpeed = playerController.playback.playerSpeed;
+    }
   }
 
   Future<void> handleShortcutForwardRepeat() async {
-    final double defaultShortcutForwardPlaySpeed = setting
-        .get(SettingBoxKey.defaultShortcutForwardPlaySpeed, defaultValue: 2.0);
-    if (playerController.playback.playerSpeed <
-        defaultShortcutForwardPlaySpeed) {
-      playerController.panel.showPlaySpeed = true;
-      setPlaybackSpeed(defaultShortcutForwardPlaySpeed);
+    if (isTV) {
+      forwardRepeatTimer ??=
+          Timer.periodic(const Duration(milliseconds: 250), (timer) async {
+        if (_continuousSeekingInProgress) return;
+        _continuousSeekingInProgress = true;
+        await _seekByArrowOffset(playerController.playback.arrowKeySkipTime);
+        _continuousSeekingInProgress = false;
+      });
+    } else {
+      final double defaultShortcutForwardPlaySpeed = setting
+          .get(SettingBoxKey.defaultShortcutForwardPlaySpeed, defaultValue: 2.0);
+      if (playerController.playback.playerSpeed <
+          defaultShortcutForwardPlaySpeed) {
+        playerController.panel.showPlaySpeed = true;
+        setPlaybackSpeed(defaultShortcutForwardPlaySpeed);
+      }
     }
   }
 
   Future<void> handleShortcutRewindRepeat() async {
-    rewindRepeatTimer ??=
-        Timer.periodic(const Duration(milliseconds: 250), (timer) async {
-      if (_continuousSeekingInProgress) return;
-      _continuousSeekingInProgress = true;
-      await _seekByArrowOffset(-playerController.playback.arrowKeySkipTime);
-      _continuousSeekingInProgress = false;
-    });
+    if (isTV) {
+      rewindRepeatTimer ??=
+          Timer.periodic(const Duration(milliseconds: 250), (timer) async {
+        if (_continuousSeekingInProgress) return;
+        _continuousSeekingInProgress = true;
+        await _seekByArrowOffset(-playerController.playback.arrowKeySkipTime);
+        _continuousSeekingInProgress = false;
+      });
+    }
   }
 
   Future<void> handleShortcutRewindUp() async {
-    rewindRepeatTimer?.cancel();
-    rewindRepeatTimer = null;
+    if (isTV) {
+      rewindRepeatTimer?.cancel();
+      rewindRepeatTimer = null;
+    }
   }
 
   Future<void> handleShortcutForwardUp() async {
-    int skipTime = playerController.playback.arrowKeySkipTime;
-    int current = playerController.playback.currentPosition.inSeconds;
-    int total = playerController.playback.duration.inSeconds;
-    int targetPosition = current + skipTime;
-    if (targetPosition > total) targetPosition = total;
-    if (playerController.panel.showPlaySpeed) {
-      playerController.panel.showPlaySpeed = false;
-      setPlaybackSpeed(lastPlayerSpeed);
+    if (isTV) {
+      forwardRepeatTimer?.cancel();
+      forwardRepeatTimer = null;
     } else {
-      try {
-        playerTimer?.cancel();
-        playerController.seek(Duration(seconds: targetPosition));
-        playerTimer = getPlayerTimer();
-      } catch (e) {
-        KazumiLogger().e('PlayerController: seek failed', error: e);
+      int skipTime = playerController.playback.arrowKeySkipTime;
+      int current = playerController.playback.currentPosition.inSeconds;
+      int total = playerController.playback.duration.inSeconds;
+      int targetPosition;
+
+      targetPosition = current + skipTime;
+      if (targetPosition > total) targetPosition = total;
+      if (playerController.panel.showPlaySpeed) {
+        playerController.panel.showPlaySpeed = false;
+        setPlaybackSpeed(lastPlayerSpeed);
+      } else {
+        try {
+          playerTimer?.cancel();
+          playerController.seek(Duration(seconds: targetPosition));
+          playerTimer = getPlayerTimer();
+        } catch (e) {
+          KazumiLogger().e('PlayerController: seek failed', error: e);
+        }
       }
     }
-    forwardRepeatTimer?.cancel();
-    forwardRepeatTimer = null;
   }
 
   void _cancelContinuousSeekTimers() {
@@ -473,6 +498,8 @@ class _PlayerItemState extends State<PlayerItem>
     // 防止焦点切换时漏掉 KeyUp 导致持续快进/快退。
     if (!widget.keyboardFocus.hasFocus) {
       _cancelContinuousSeekTimers();
+    }
+  }
     }
   }
 
@@ -1773,6 +1800,13 @@ class _PlayerItemState extends State<PlayerItem>
         _handleFullscreenChange(context);
       },
     );
+    _playerSizeListener = mobx.reaction<String>(
+      (_) =>
+          '${playerController.debug.playerWidth}:${playerController.debug.playerHeight}',
+      (_) {
+        unawaited(_syncPIPAspectWhenVideoSizeReady());
+      },
+    );
     // TV版本：监听侧边菜单状态变化，同步更新TV模式
     if (isTV) {
       _tvModeListener = mobx.reaction<bool>(
@@ -1790,13 +1824,6 @@ class _PlayerItemState extends State<PlayerItem>
         },
       );
     }
-    _playerSizeListener = mobx.reaction<String>(
-      (_) =>
-          '${playerController.debug.playerWidth}:${playerController.debug.playerHeight}',
-      (_) {
-        unawaited(_syncPIPAspectWhenVideoSizeReady());
-      },
-    );
     if (Platform.isAndroid) {
       PipUtils.initPipHandler(
         onAction: (action) async {
@@ -1882,8 +1909,8 @@ class _PlayerItemState extends State<PlayerItem>
     // Playback lifetime is owned by the route-scoped PlayerController.
     // This widget only detaches UI listeners and timers.
     _fullscreenListener();
-    _tvModeListener?.call();
     _playerSizeListener();
+    _tvModeListener?.call();
     WidgetsBinding.instance.removeObserver(this);
     windowManager.removeListener(this);
     playerTimer?.cancel();
@@ -1985,31 +2012,8 @@ class _PlayerItemState extends State<PlayerItem>
                     },
                     child: Stack(alignment: Alignment.center, children: [
                     Center(
-                        child: Focus(
-                            // workaround for #461
-                            // I don't know why, but the focus node will break popscope.
-                            focusNode: widget.keyboardFocus,
-                            autofocus: true,
-                            onKeyEvent: (focusNode, KeyEvent event) {
-                              bool handled = false;
-                              final keyLabel =
-                                  event.logicalKey.keyLabel.isNotEmpty
-                                      ? event.logicalKey.keyLabel
-                                      : event.logicalKey.debugName ?? '';
-                              if (event is KeyDownEvent) {
-                                handled = handleShortcutDown(keyLabel);
-                              } else if (event is KeyRepeatEvent) {
-                                handled =
-                                    handleShortcutLongPress(keyLabel, "Repeat");
-                              } else if (event is KeyUpEvent) {
-                                handled =
-                                    handleShortcutLongPress(keyLabel, "Up");
-                              }
-                              return handled
-                                  ? KeyEventResult.handled
-                                  : KeyEventResult.ignored;
-                            },
-                            child: const PlayerItemSurface())),
+                        child: PlayerItemSurface(
+                            playerController: playerController)),
                     (playerController.playback.isBuffering ||
                             videoPageController.loading)
                         ? const Positioned.fill(

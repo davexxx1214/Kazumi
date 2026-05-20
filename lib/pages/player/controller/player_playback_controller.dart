@@ -286,7 +286,7 @@ abstract class _PlayerPlaybackController with Store {
     }
 
     bool showPlayerError =
-        setting.get(SettingBoxKey.showPlayerError, defaultValue: true);
+        setting.get(SettingBoxKey.showPlayerError, defaultValue: !isTV);
     player.stream.error.listen((event) {
       if (showPlayerError) {
         if (!isCurrentPlayer(player)) {
