@@ -500,8 +500,6 @@ class _PlayerItemState extends State<PlayerItem>
       _cancelContinuousSeekTimers();
     }
   }
-    }
-  }
 
   //全屏快捷键动作
   void handleShortcutFullscreen() {

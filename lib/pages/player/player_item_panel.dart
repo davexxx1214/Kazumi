@@ -1219,16 +1219,11 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
   }
 
     
-    return Observer(
-      builder: (context) {
-        return SafeArea(
-=======
   Widget get topControlWidget {
     return Observer(builder: (context) {
       return EmbeddedNativeControlArea(
         requireOffset: !videoPageController.isFullscreen,
         child: SafeArea(
->>>>>>> origin/main
           top: false,
           bottom: false,
           left: videoPageController.isFullscreen,
