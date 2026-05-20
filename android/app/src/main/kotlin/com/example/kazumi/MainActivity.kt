@@ -15,6 +15,9 @@ import android.graphics.drawable.Icon
 import android.util.Rational
 import androidx.annotation.NonNull
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import com.ryanheise.audioservice.AudioServiceActivity
@@ -31,6 +34,9 @@ class MainActivity: AudioServiceActivity() {
     private var pipActionReceiverRegistered = false
     private var autoEnterPipOnHomeGesture = false
     private var pipInPlayerPage = false
+    private var pipAspectWidth = 16
+    private var pipAspectHeight = 9
+    private var androidFullscreen = false
 
     private val actionPipPlayPause = "com.predidit.kazumi.pip.PLAY_PAUSE"
     private val actionPipForward = "com.predidit.kazumi.pip.FORWARD"
@@ -57,6 +63,13 @@ class MainActivity: AudioServiceActivity() {
         super.onDestroy()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && androidFullscreen) {
+            applyAndroidFullscreen()
+        }
+    }
+
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         intentChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
@@ -76,6 +89,12 @@ class MainActivity: AudioServiceActivity() {
             } else if (call.method == "getAndroidSdkVersion") {
                 val sdkVersion = getAndroidSdkVersion()
                 result.success(sdkVersion)
+            } else if (call.method == "enterFullscreen") {
+                enterAndroidFullscreen()
+                result.success(null)
+            } else if (call.method == "exitFullscreen") {
+                exitAndroidFullscreen()
+                result.success(null)
             } else {
                 result.notImplemented()
             }
@@ -96,13 +115,15 @@ class MainActivity: AudioServiceActivity() {
             if (call.method == "isPictureInPictureSupported") {
                 result.success(isPictureInPictureSupported())
             } else if (call.method == "enterPictureInPictureMode") {
-                val width = call.argument<Int>("width") ?: 16
-                val height = call.argument<Int>("height") ?: 9
-                val entered = enterPictureInPicture(width, height)
+                pipAspectWidth = call.argument<Int>("width") ?: pipAspectWidth
+                pipAspectHeight = call.argument<Int>("height") ?: pipAspectHeight
+                val entered = enterPictureInPicture()
                 result.success(entered)
             } else if (call.method == "updatePictureInPictureActions") {
                 val playing = call.argument<Boolean>("playing") ?: false
                 val danmakuEnabled = call.argument<Boolean>("danmakuEnabled") ?: false
+                pipAspectWidth = call.argument<Int>("width") ?: pipAspectWidth
+                pipAspectHeight = call.argument<Int>("height") ?: pipAspectHeight
                 updatePictureInPictureActions(playing, danmakuEnabled)
                 result.success(true)
             } else if (call.method == "setAndroidAutoEnterPIPEnabled") {
@@ -138,6 +159,27 @@ class MainActivity: AudioServiceActivity() {
         return Build.VERSION.SDK_INT
     }
 
+    private fun enterAndroidFullscreen() {
+        androidFullscreen = true
+        applyAndroidFullscreen()
+    }
+
+    private fun applyAndroidFullscreen() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    private fun exitAndroidFullscreen() {
+        androidFullscreen = false
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, window.decorView)
+            .show(WindowInsetsCompat.Type.systemBars())
+    }
+
     private fun isPictureInPictureSupported(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return false
@@ -145,14 +187,14 @@ class MainActivity: AudioServiceActivity() {
         return packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
     }
 
-    private fun enterPictureInPicture(width: Int, height: Int): Boolean {
+    private fun enterPictureInPicture(): Boolean {
         if (!isPictureInPictureSupported()) {
             return false
         }
         if (isInPictureInPictureMode) {
             return true
         }
-        return enterPictureInPictureMode(buildPictureInPictureParams(width, height))
+        return enterPictureInPictureMode(buildPictureInPictureParams())
     }
 
     private fun updatePictureInPictureActions(
@@ -167,12 +209,10 @@ class MainActivity: AudioServiceActivity() {
         refreshPictureInPictureParamsIfNeeded()
     }
 
-    private fun buildPictureInPictureParams(width: Int = 16, height: Int = 9): PictureInPictureParams {
-        val safeWidth = if (width > 0) width else 16
-        val safeHeight = if (height > 0) height else 9
+    private fun buildPictureInPictureParams(): PictureInPictureParams {
         val actions = buildPipActions()
         val builder = PictureInPictureParams.Builder()
-            .setAspectRatio(Rational(safeWidth, safeHeight))
+            .setAspectRatio(Rational(pipAspectWidth, pipAspectHeight))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(autoEnterPipOnHomeGesture && pipInPlayerPage)
             builder.setSeamlessResizeEnabled(false)

@@ -45,5 +45,10 @@ linter:
 
 analyzer:
   exclude:
+    - .cache/**
+    - .dart_tool/**
     - build/**
     - fastlane/**
+    - lib/bbcode/generated/**
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
