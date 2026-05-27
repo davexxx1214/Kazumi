@@ -7,8 +7,8 @@ import 'package:kazumi/bean/widget/error_widget.dart';
 import 'package:kazumi/pages/search/search_controller.dart';
 import 'package:kazumi/bean/appbar/sys_app_bar.dart';
 import 'package:kazumi/modules/bangumi/bangumi_item.dart';
-import 'package:kazumi/utils/logger.dart';
 import 'package:kazumi/utils/search_parser.dart';
+import 'package:kazumi/services/logging/logger.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class SearchPage extends StatefulWidget {
@@ -117,10 +117,12 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void dispose() {
     searchPageController.bangumiList.clear();
+    searchController.dispose();
     scrollController.removeListener(scrollListener);
     _searchFieldFocusNode.dispose();
     _searchButtonFocusNode.dispose();
     _settingsButtonFocusNode.dispose();
+    scrollController.dispose();
     super.dispose();
   }
 
@@ -458,9 +460,9 @@ class _SearchPageState extends State<SearchPage> {
             Expanded(
                 child: TabBarView(
               children: options,
-             ))
-           ],
-         )));
+            ))
+          ],
+        )));
   }
 
   Widget _buildSearchResults() {
@@ -474,8 +476,7 @@ class _SearchPageState extends State<SearchPage> {
               actions: [
                 GeneralErrorButton(
                   onPressed: () {
-                    searchPageController.searchBangumi(
-                        searchController.text,
+                    searchPageController.searchBangumi(searchController.text,
                         type: 'init');
                   },
                   text: '点击重试',
@@ -504,8 +505,7 @@ class _SearchPageState extends State<SearchPage> {
           searchPageController.bangumiList.toList();
 
       if (searchPageController.notShowWatchedBangumis) {
-        final watchedBangumiIds =
-            searchPageController.loadWatchedBangumiIds();
+        final watchedBangumiIds = searchPageController.loadWatchedBangumiIds();
         filteredList = filteredList
             .where((item) => !watchedBangumiIds.contains(item.id))
             .toList();

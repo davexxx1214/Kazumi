@@ -4,7 +4,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/bean/widget/embedded_native_control_area.dart';
 import 'package:kazumi/pages/router.dart';
 import 'package:kazumi/utils/constants.dart';
-import 'package:kazumi/utils/storage.dart';
+import 'package:kazumi/services/storage/storage.dart';
 import 'package:provider/provider.dart';
 
 class ScaffoldMenu extends StatefulWidget {
@@ -124,6 +124,12 @@ class _ScaffoldMenu extends State<ScaffoldMenu> {
   final PageController _page = PageController();
 
   @override
+  void dispose() {
+    _page.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
@@ -221,9 +227,8 @@ class _ScaffoldMenu extends State<ScaffoldMenu> {
           final Color foregroundColor = (hasFocus || selected)
               ? colorScheme.primary
               : colorScheme.onSurfaceVariant;
-          final Color backgroundColor = hasFocus
-              ? colorScheme.primaryContainer
-              : Colors.transparent;
+          final Color backgroundColor =
+              hasFocus ? colorScheme.primaryContainer : Colors.transparent;
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
@@ -301,7 +306,8 @@ class _ScaffoldMenu extends State<ScaffoldMenu> {
                   final bool selected = state.selectedIndex == index;
                   return _buildTVSideMenuButton(
                     context: context,
-                    focusNode: tvSideMenuController.destinationFocusNodes[index],
+                    focusNode:
+                        tvSideMenuController.destinationFocusNodes[index],
                     icon: selected ? selectedIcon : icon,
                     label: label,
                     selected: selected,

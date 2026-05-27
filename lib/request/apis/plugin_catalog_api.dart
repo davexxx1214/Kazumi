@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'package:kazumi/utils/logger.dart';
+import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/request/config/api_endpoints.dart';
 import 'package:kazumi/request/clients/github_client.dart';
 import 'package:kazumi/plugins/plugins.dart';
 import 'package:kazumi/modules/plugin/plugin_http_module.dart';
-import 'package:kazumi/utils/storage.dart';
+import 'package:kazumi/services/storage/storage.dart';
 
 class PluginSourceRepository {
   const PluginSourceRepository({
