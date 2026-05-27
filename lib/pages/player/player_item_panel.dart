@@ -1010,7 +1010,8 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               border: focusNode.hasFocus
-                  ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
+                  ? Border.all(
+                      color: Theme.of(context).colorScheme.primary, width: 2)
                   : null,
               color: focusNode.hasFocus
                   ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
@@ -1045,7 +1046,7 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                 Container(
                   padding: const EdgeInsets.only(left: 10.0, bottom: 10),
                   child: Text(
-                    "${Utils.durationToString(playerController.playback.currentPosition)} / ${Utils.durationToString(playerController.playback.duration)}",
+                    "${durationToString(playerController.playback.currentPosition)} / ${durationToString(playerController.playback.duration)}",
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14.0,
@@ -1079,7 +1080,8 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                 ),
                 // TV控制按钮行
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -1089,7 +1091,8 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                             ? Icons.pause_rounded
                             : Icons.play_arrow_rounded),
                         onPressed: () => playerController.playOrPause(),
-                        tooltip: playerController.playback.playing ? '暂停' : '播放',
+                        tooltip:
+                            playerController.playback.playing ? '暂停' : '播放',
                         autofocus: true, // 第一个按钮自动获取焦点
                       ),
                       const SizedBox(width: 16),
@@ -1106,7 +1109,9 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                             ? danmakuOnIcon(context)
                             : cachedDanmakuOffIcon!,
                         onPressed: () => widget.handleDanmaku(),
-                        tooltip: playerController.danmaku.danmakuOn ? '关闭弹幕' : '打开弹幕',
+                        tooltip: playerController.danmaku.danmakuOn
+                            ? '关闭弹幕'
+                            : '打开弹幕',
                       ),
                       const SizedBox(width: 16),
                       // 剧集列表
@@ -1129,7 +1134,6 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
     );
   }
 
-    
   Widget get topControlWidget {
     return Observer(builder: (context) {
       return EmbeddedNativeControlArea(
