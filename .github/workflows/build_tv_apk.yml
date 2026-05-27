@@ -41,7 +41,8 @@ jobs:
             sed -i "s/rABUaBLqdz7aCSi3fe88ZDj2gwga9Vax/$DANDANAPI_KEY/g" lib/utils/dandan_credentials.dart
             echo "✅ DanDan API credentials injected"
           else
-            echo "::warning::DanDan API credentials not configured; danmaku API requests may fail"
+            echo "::error::DanDan API credentials are required for TV builds. Configure DANDANAPI_APPID and DANDANAPI_KEY secrets."
+            exit 1
           fi
 
       # 配置签名密钥（需要在 GitHub Secrets 中设置）

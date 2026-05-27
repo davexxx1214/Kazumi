@@ -91,6 +91,10 @@
               DANDANAPI_APPID: ${{ secrets.DANDANAPI_APPID }}
               DANDANAPI_KEY: ${{ secrets.DANDANAPI_KEY }}
             run: |
+              if [ -z "$DANDANAPI_APPID" ] || [ -z "$DANDANAPI_KEY" ]; then
+                echo "::error::DanDan API credentials are required. Configure DANDANAPI_APPID and DANDANAPI_KEY secrets."
+                exit 1
+              fi
               sed -i "s/kvpx7qkqjh/$DANDANAPI_APPID/g" lib/utils/dandan_credentials.dart
               sed -i "s/rABUaBLqdz7aCSi3fe88ZDj2gwga9Vax/$DANDANAPI_KEY/g" lib/utils/dandan_credentials.dart
           - name: Build Flutter for Android
@@ -138,6 +142,10 @@
               DANDANAPI_APPID: ${{ secrets.DANDANAPI_APPID }}
               DANDANAPI_KEY: ${{ secrets.DANDANAPI_KEY }}
             run: |
+              if ([string]::IsNullOrEmpty($env:DANDANAPI_APPID) -or [string]::IsNullOrEmpty($env:DANDANAPI_KEY)) {
+                Write-Error "DanDan API credentials are required. Configure DANDANAPI_APPID and DANDANAPI_KEY secrets."
+                exit 1
+              }
               (Get-Content -Path 'lib/utils/dandan_credentials.dart') -replace "kvpx7qkqjh", "$env:DANDANAPI_APPID" | Set-Content -Path 'lib/utils/dandan_credentials.dart'
               (Get-Content -Path 'lib/utils/dandan_credentials.dart') -replace "rABUaBLqdz7aCSi3fe88ZDj2gwga9Vax", "$env:DANDANAPI_KEY" | Set-Content -Path 'lib/utils/dandan_credentials.dart'
           - run: flutter build windows   
@@ -252,6 +260,10 @@
               DANDANAPI_APPID: ${{ secrets.DANDANAPI_APPID }}
               DANDANAPI_KEY: ${{ secrets.DANDANAPI_KEY }}
             run: |
+              if [ -z "$DANDANAPI_APPID" ] || [ -z "$DANDANAPI_KEY" ]; then
+                echo "::error::DanDan API credentials are required. Configure DANDANAPI_APPID and DANDANAPI_KEY secrets."
+                exit 1
+              fi
               sed -i "s/kvpx7qkqjh/$DANDANAPI_APPID/g" lib/utils/dandan_credentials.dart
               sed -i "s/rABUaBLqdz7aCSi3fe88ZDj2gwga9Vax/$DANDANAPI_KEY/g" lib/utils/dandan_credentials.dart
           - name: Build Flutter for Linux
@@ -337,6 +349,10 @@
               DANDANAPI_APPID: ${{ secrets.DANDANAPI_APPID }}
               DANDANAPI_KEY: ${{ secrets.DANDANAPI_KEY }}
             run: |
+              if [ -z "$DANDANAPI_APPID" ] || [ -z "$DANDANAPI_KEY" ]; then
+                echo "::error::DanDan API credentials are required. Configure DANDANAPI_APPID and DANDANAPI_KEY secrets."
+                exit 1
+              fi
               sed -i '' "s/kvpx7qkqjh/$DANDANAPI_APPID/g" lib/utils/dandan_credentials.dart
               sed -i '' "s/rABUaBLqdz7aCSi3fe88ZDj2gwga9Vax/$DANDANAPI_KEY/g" lib/utils/dandan_credentials.dart
           - name: Build IPA
@@ -378,6 +394,10 @@
               DANDANAPI_APPID: ${{ secrets.DANDANAPI_APPID }}
               DANDANAPI_KEY: ${{ secrets.DANDANAPI_KEY }}
             run: |
+              if [ -z "$DANDANAPI_APPID" ] || [ -z "$DANDANAPI_KEY" ]; then
+                echo "::error::DanDan API credentials are required. Configure DANDANAPI_APPID and DANDANAPI_KEY secrets."
+                exit 1
+              fi
               sed -i '' "s/kvpx7qkqjh/$DANDANAPI_APPID/g" lib/utils/dandan_credentials.dart
               sed -i '' "s/rABUaBLqdz7aCSi3fe88ZDj2gwga9Vax/$DANDANAPI_KEY/g" lib/utils/dandan_credentials.dart
           - run: flutter build macos --release
