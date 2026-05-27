@@ -31,6 +31,19 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Inject DanDan API Credentials
+        env:
+          DANDANAPI_APPID: ${{ secrets.DANDANAPI_APPID }}
+          DANDANAPI_KEY: ${{ secrets.DANDANAPI_KEY }}
+        run: |
+          if [ -n "$DANDANAPI_APPID" ] && [ -n "$DANDANAPI_KEY" ]; then
+            sed -i "s/kvpx7qkqjh/$DANDANAPI_APPID/g" lib/utils/dandan_credentials.dart
+            sed -i "s/rABUaBLqdz7aCSi3fe88ZDj2gwga9Vax/$DANDANAPI_KEY/g" lib/utils/dandan_credentials.dart
+            echo "✅ DanDan API credentials injected"
+          else
+            echo "::warning::DanDan API credentials not configured; danmaku API requests may fail"
+          fi
+
       # 配置签名密钥（需要在 GitHub Secrets 中设置）
       - name: Setup Signing Key
         env:
