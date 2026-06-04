@@ -25,6 +25,7 @@ import 'package:kazumi/utils/device.dart';
 import 'package:kazumi/utils/http_headers.dart';
 import 'package:kazumi/utils/media.dart';
 import 'package:kazumi/services/platform/display_mode_service.dart';
+import 'package:kazumi/utils/constants.dart';
 
 part 'video_controller.g.dart';
 
@@ -408,7 +409,7 @@ abstract class _VideoPageController with Store {
         if (result.hasDanmakus) {
           final bool enableDanmaku = setting.get(
             SettingBoxKey.danmakuEnabledByDefault,
-            defaultValue: false,
+            defaultValue: isTV,
           );
           playerController.danmaku.applyDanmakuLoad(
             result,
