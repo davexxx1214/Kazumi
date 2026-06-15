@@ -16,15 +16,12 @@ class HistorySyncService {
   factory HistorySyncService() => _instance;
 
   Future<String> getDeviceId() async {
-    final setting = GStorage.setting;
-    final existing = setting
-        .get(SettingBoxKey.historySyncDeviceId, defaultValue: '')
-        .toString();
+    final existing = GStorage.getSetting(SettingsKeys.historySyncDeviceId);
     if (existing.isNotEmpty) {
       return existing;
     }
     final deviceId = HistorySyncDevice.generateDeviceId();
-    await setting.put(SettingBoxKey.historySyncDeviceId, deviceId);
+    await GStorage.putSetting(SettingsKeys.historySyncDeviceId, deviceId);
     return deviceId;
   }
 
@@ -35,16 +32,44 @@ class HistorySyncService {
     required int progressMs,
     int? updatedAt,
   }) async {
-    final event = HistorySyncEvent.upsertProgress(
-      deviceId: await getDeviceId(),
-      seq: await _nextSeq(),
-      history: history,
-      episode: episode,
-      road: road,
-      progressMs: progressMs,
-      updatedAt: updatedAt ?? history.lastWatchTime.millisecondsSinceEpoch,
+    final deviceId = await getDeviceId();
+    final effectiveUpdatedAt =
+        updatedAt ?? history.lastWatchTime.millisecondsSinceEpoch;
+    final progressSeq = await _nextSeq();
+    final watchStateSeq = await _nextSeq();
+    final events = [
+      HistorySyncEvent.upsertProgress(
+        deviceId: deviceId,
+        seq: progressSeq,
+        history: history,
+        episode: episode,
+        road: road,
+        progressMs: progressMs,
+        updatedAt: effectiveUpdatedAt,
+      ),
+      HistorySyncEvent.upsertWatchState(
+        deviceId: deviceId,
+        seq: watchStateSeq,
+        history: history,
+        episode: episode,
+        updatedAt: effectiveUpdatedAt,
+      ),
+    ];
+    await appendEvents(events);
+  }
+
+  Future<void> appendEvent(HistorySyncEvent event) async {
+    await appendEvents([event]);
+  }
+
+  Future<void> appendEvents(Iterable<HistorySyncEvent> events) async {
+    final file = await localChangeLogFile();
+    await file.parent.create(recursive: true);
+    await file.writeAsString(
+      HistorySyncCodec.eventsToJsonLines(events),
+      mode: FileMode.append,
+      flush: true,
     );
-    await appendEvent(event);
   }
 
   Future<void> appendDeleteHistory(History history) async {
@@ -64,16 +89,6 @@ class HistorySyncService {
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
     await appendEvent(event);
-  }
-
-  Future<void> appendEvent(HistorySyncEvent event) async {
-    final file = await localChangeLogFile();
-    await file.parent.create(recursive: true);
-    await file.writeAsString(
-      HistorySyncCodec.eventsToJsonLines([event]),
-      mode: FileMode.append,
-      flush: true,
-    );
   }
 
   Future<List<HistorySyncEvent>> readLocalEvents() async {
@@ -129,23 +144,16 @@ class HistorySyncService {
   }
 
   Future<int> _nextSeq() async {
-    final setting = GStorage.setting;
-    final value = setting.get(
-      SettingBoxKey.historySyncSequence,
-      defaultValue: 0,
-    );
-    final next = value is int ? value + 1 : 1;
-    await setting.put(SettingBoxKey.historySyncSequence, next);
+    final value = GStorage.getSetting(SettingsKeys.historySyncSequence);
+    final next = value + 1;
+    await GStorage.putSetting(SettingsKeys.historySyncSequence, next);
     return next;
   }
 
   Future<void> appendSafely(Future<void> Function() append) async {
-    final webDavEnable =
-        GStorage.setting.get(SettingBoxKey.webDavEnable, defaultValue: false);
-    final historySyncEnable = GStorage.setting.get(
-      SettingBoxKey.webDavEnableHistory,
-      defaultValue: false,
-    );
+    final webDavEnable = GStorage.getSetting(SettingsKeys.webDavEnable);
+    final historySyncEnable =
+        GStorage.getSetting(SettingsKeys.webDavEnableHistory);
     if (webDavEnable != true || historySyncEnable != true) {
       return;
     }

@@ -22,7 +22,6 @@ import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:screen_brightness_platform_interface/screen_brightness_platform_interface.dart';
 import 'package:kazumi/pages/history/history_controller.dart';
 import 'package:kazumi/pages/collect/collect_controller.dart';
-import 'package:hive_ce/hive.dart';
 import 'package:kazumi/services/storage/storage.dart';
 import 'package:kazumi/request/apis/danmaku_api.dart';
 import 'package:kazumi/modules/danmaku/danmaku_search_response.dart';
@@ -73,7 +72,6 @@ class PlayerItem extends StatefulWidget {
 
 class _PlayerItemState extends State<PlayerItem>
     with WindowListener, WidgetsBindingObserver, TickerProviderStateMixin {
-  Box setting = GStorage.setting;
   late final PlayerController playerController;
   final VideoPageController videoPageController =
       Modular.get<VideoPageController>();
@@ -172,10 +170,8 @@ class _PlayerItemState extends State<PlayerItem>
     if (!Platform.isAndroid) {
       return;
     }
-    final bool autoEnterPIPEnabled = setting.get(
-      SettingBoxKey.androidAutoEnterPIP,
-      defaultValue: false,
-    );
+    final bool autoEnterPIPEnabled =
+        GStorage.getSetting(SettingsKeys.androidAutoEnterPIP);
     try {
       await PipUtils.setAndroidAutoEnterPIPEnabled(autoEnterPIPEnabled);
     } catch (e) {
@@ -241,12 +237,12 @@ class _PlayerItemState extends State<PlayerItem>
 
   void _loadShortcuts() {
     keyboardShortcuts = {};
-    // TV版本使用专用快捷键配置
     final shortcuts = isTV ? tvShortcuts : defaultShortcuts;
     shortcuts.forEach((key, defaultValue) {
-      keyboardShortcuts[key] = setting
-          .get('shortcut_$key', defaultValue: defaultValue)
-          .cast<String>();
+      keyboardShortcuts[key] = GStorage.getStringListSettingByName(
+        'shortcut_$key',
+        defaultValue: defaultValue,
+      );
     });
   }
 
@@ -417,9 +413,8 @@ class _PlayerItemState extends State<PlayerItem>
         _continuousSeekingInProgress = false;
       });
     } else {
-      final double defaultShortcutForwardPlaySpeed = setting.get(
-          SettingBoxKey.defaultShortcutForwardPlaySpeed,
-          defaultValue: 2.0);
+      final double defaultShortcutForwardPlaySpeed =
+          GStorage.getSetting(SettingsKeys.defaultShortcutForwardPlaySpeed);
       if (playerController.playback.playerSpeed <
           defaultShortcutForwardPlaySpeed) {
         playerController.panel.showPlaySpeed = true;
@@ -444,6 +439,7 @@ class _PlayerItemState extends State<PlayerItem>
     if (isTV) {
       rewindRepeatTimer?.cancel();
       rewindRepeatTimer = null;
+    }
     }
   }
 
@@ -791,8 +787,8 @@ class _PlayerItemState extends State<PlayerItem>
   void handleDanmaku() {
     playerController.danmaku.canvasController.clear();
     if (playerController.danmaku.danmakuOn) {
-      playerController.danmaku.danmakuOn = false;
-      setting.put(SettingBoxKey.danmakuEnabledByDefault, false);
+      playerController.danmaku.setDanmakuEnabled(false);
+      GStorage.putSetting(SettingsKeys.danmakuEnabledByDefault, false);
       unawaited(_updateAndroidPIPActions(force: true));
       return;
     }
@@ -801,8 +797,8 @@ class _PlayerItemState extends State<PlayerItem>
       unawaited(_updateAndroidPIPActions(force: true));
       return;
     }
-    playerController.danmaku.danmakuOn = true;
-    setting.put(SettingBoxKey.danmakuEnabledByDefault, true);
+    playerController.danmaku.setDanmakuEnabled(true);
+    GStorage.putSetting(SettingsKeys.danmakuEnabledByDefault, true);
     unawaited(_updateAndroidPIPActions(force: true));
   }
 
@@ -917,6 +913,12 @@ class _PlayerItemState extends State<PlayerItem>
   //截图
   Future<void> handleScreenshot() async {
     _playScreenshotFeedback();
+
+    if (isDesktop()) {
+      KazumiDialog.showToast(message: '桌面端暂未支持保存截图');
+      return;
+    }
+
     try {
       Uint8List? screenshot = await playerController.screenshotPng();
 
@@ -925,10 +927,6 @@ class _PlayerItemState extends State<PlayerItem>
         return;
       }
 
-      if (isDesktop()) {
-        KazumiDialog.showToast(message: '桌面端暂未支持保存截图');
-        return;
-      }
       final result = await SaverGallery.saveImage(
         screenshot,
         fileName: DateTime.timestamp().millisecondsSinceEpoch.toString(),
@@ -956,7 +954,7 @@ class _PlayerItemState extends State<PlayerItem>
     // mediacodec_embed 不支持超分辨率
     if (Platform.isAndroid && shaderIndex != 1) {
       final String androidVideoRenderer =
-          setting.get(SettingBoxKey.androidVideoRenderer, defaultValue: 'auto');
+          GStorage.getSetting(SettingsKeys.androidVideoRenderer);
 
       if (androidVideoRenderer == 'mediacodec_embed') {
         await KazumiDialog.show(builder: (context) {
@@ -980,7 +978,7 @@ class _PlayerItemState extends State<PlayerItem>
 
     final bool isHighMode = shaderIndex == 3;
     final bool alreadyShown =
-        setting.get(SettingBoxKey.superResolutionWarn, defaultValue: false);
+        GStorage.getSetting(SettingsKeys.superResolutionWarn);
 
     if (isHighMode && !alreadyShown) {
       bool confirmed = false;
@@ -1014,7 +1012,8 @@ class _PlayerItemState extends State<PlayerItem>
               TextButton(
                 onPressed: () async {
                   if (dontAskAgain) {
-                    await setting.put(SettingBoxKey.superResolutionWarn, true);
+                    await GStorage.putSetting(
+                        SettingsKeys.superResolutionWarn, true);
                   }
                   KazumiDialog.dismiss();
                 },
@@ -1024,7 +1023,8 @@ class _PlayerItemState extends State<PlayerItem>
                 onPressed: () async {
                   confirmed = true;
                   if (dontAskAgain) {
-                    await setting.put(SettingBoxKey.superResolutionWarn, true);
+                    await GStorage.putSetting(
+                        SettingsKeys.superResolutionWarn, true);
                   }
                   KazumiDialog.dismiss();
                 },
@@ -1402,10 +1402,12 @@ class _PlayerItemState extends State<PlayerItem>
                                     return;
                                   }
                                   if (hasDanmakus) {
-                                    playerController.danmaku.danmakuOn = true;
+                                    playerController.danmaku
+                                        .setDanmakuEnabled(true);
                                     KazumiDialog.showToast(message: '弹幕切换成功');
                                   } else {
-                                    playerController.danmaku.danmakuOn = false;
+                                    playerController.danmaku
+                                        .setDanmakuEnabled(false);
                                     KazumiDialog.showToast(message: '未找到弹幕内容');
                                   }
                                 } catch (e) {
@@ -1563,6 +1565,20 @@ class _PlayerItemState extends State<PlayerItem>
             },
           ),
           ListTile(
+            title: const Text("VideoBitrate"),
+            subtitle:
+                Text(playerController.debug.playerVideoBitrate.toString()),
+            onTap: () {
+              KazumiDialog.showToast(message: '已复制到剪贴板');
+              Clipboard.setData(
+                ClipboardData(
+                  text:
+                      "VideoBitrate\n${playerController.debug.playerVideoBitrate.toString()}",
+                ),
+              );
+            },
+          ),
+          ListTile(
             title: const Text("AudioBitrate"),
             subtitle:
                 Text(playerController.debug.playerAudioBitrate.toString()),
@@ -1654,9 +1670,8 @@ class _PlayerItemState extends State<PlayerItem>
 
     final String defaultCustomSyncPlayEndPoint = '自定义服务器';
     String customSyncPlayEndPoint = defaultCustomSyncPlayEndPoint;
-    String selectedSyncPlayEndPoint = setting.get(
-        SettingBoxKey.syncPlayEndPoint,
-        defaultValue: defaultSyncPlayEndPoint);
+    String selectedSyncPlayEndPoint =
+        GStorage.getSetting(SettingsKeys.syncPlayEndPoint);
 
     KazumiDialog.show(
       builder: (context) {
@@ -1759,8 +1774,8 @@ class _PlayerItemState extends State<PlayerItem>
               TextButton(
                 child: const Text('确认'),
                 onPressed: () {
-                  setting.put(
-                    SettingBoxKey.syncPlayEndPoint,
+                  GStorage.putSetting(
+                    SettingsKeys.syncPlayEndPoint,
                     selectedSyncPlayEndPoint,
                   );
                   KazumiDialog.dismiss();
@@ -1956,46 +1971,38 @@ class _PlayerItemState extends State<PlayerItem>
       parent: _screenshotFeedbackController,
       curve: Curves.linear,
     );
-    webDavEnable = setting.get(SettingBoxKey.webDavEnable, defaultValue: false);
-    webDavEnableHistory =
-        setting.get(SettingBoxKey.webDavEnableHistory, defaultValue: false);
-    // TV版本默认开启弹幕
-    playerController.danmaku.danmakuOn =
-        setting.get(SettingBoxKey.danmakuEnabledByDefault, defaultValue: isTV);
-    _border = setting.get(SettingBoxKey.danmakuBorder, defaultValue: true);
-    _opacity = setting.get(SettingBoxKey.danmakuOpacity, defaultValue: 1.0);
-    _fontSize = setting.get(SettingBoxKey.danmakuFontSize,
-        defaultValue: (isCompact()) ? 16.0 : 25.0);
-    _danmakuArea = setting.get(SettingBoxKey.danmakuArea, defaultValue: 1.0);
-    _hideTop = !setting.get(SettingBoxKey.danmakuTop, defaultValue: true);
-    _hideBottom =
-        !setting.get(SettingBoxKey.danmakuBottom, defaultValue: false);
-    _hideScroll = !setting.get(SettingBoxKey.danmakuScroll, defaultValue: true);
-    _massiveMode =
-        setting.get(SettingBoxKey.danmakuMassive, defaultValue: false);
-    _danmakuColor = setting.get(SettingBoxKey.danmakuColor, defaultValue: true);
-    _danmakuDuration =
-        setting.get(SettingBoxKey.danmakuDuration, defaultValue: 8.0);
-    _danmakuLineHeight =
-        setting.get(SettingBoxKey.danmakuLineHeight, defaultValue: 1.6);
+    webDavEnable = GStorage.getSetting(SettingsKeys.webDavEnable);
+    webDavEnableHistory = GStorage.getSetting(SettingsKeys.webDavEnableHistory);
+    playerController.danmaku.setDanmakuEnabled(
+      GStorage.getSetting(SettingsKeys.danmakuEnabledByDefault),
+    );
+    _border = GStorage.getSetting(SettingsKeys.danmakuBorder);
+    _opacity = GStorage.getSetting(SettingsKeys.danmakuOpacity);
+    _fontSize = GStorage.getSetting(
+      SettingsKeys.danmakuFontSize,
+      context: SettingContext(compactLayout: isCompact()),
+    );
+    _danmakuArea = GStorage.getSetting(SettingsKeys.danmakuArea);
+    _hideTop = !GStorage.getSetting(SettingsKeys.danmakuTop);
+    _hideBottom = !GStorage.getSetting(SettingsKeys.danmakuBottom);
+    _hideScroll = !GStorage.getSetting(SettingsKeys.danmakuScroll);
+    _massiveMode = GStorage.getSetting(SettingsKeys.danmakuMassive);
+    _danmakuColor = GStorage.getSetting(SettingsKeys.danmakuColor);
+    _danmakuDuration = GStorage.getSetting(SettingsKeys.danmakuDuration);
+    _danmakuLineHeight = GStorage.getSetting(SettingsKeys.danmakuLineHeight);
     _danmakuBiliBiliSource =
-        setting.get(SettingBoxKey.danmakuBiliBiliSource, defaultValue: true);
-    _danmakuGamerSource =
-        setting.get(SettingBoxKey.danmakuGamerSource, defaultValue: true);
+        GStorage.getSetting(SettingsKeys.danmakuBiliBiliSource);
+    _danmakuGamerSource = GStorage.getSetting(SettingsKeys.danmakuGamerSource);
     _danmakuDanDanSource =
-        setting.get(SettingBoxKey.danmakuDanDanSource, defaultValue: true);
-    _danmakuFontWeight =
-        setting.get(SettingBoxKey.danmakuFontWeight, defaultValue: 4);
-    _danmakuUseSystemFont =
-        setting.get(SettingBoxKey.useSystemFont, defaultValue: false);
-    _danmakuBorderSize =
-        setting.get(SettingBoxKey.danmakuBorderSize, defaultValue: 1.5);
-    haEnable = setting.get(SettingBoxKey.hAenable, defaultValue: true);
-    autoPlayNext = setting.get(SettingBoxKey.autoPlayNext, defaultValue: true);
-    backgroundPlayback =
-        setting.get(SettingBoxKey.backgroundPlayback, defaultValue: false);
+        GStorage.getSetting(SettingsKeys.danmakuDanDanSource);
+    _danmakuFontWeight = GStorage.getSetting(SettingsKeys.danmakuFontWeight);
+    _danmakuUseSystemFont = GStorage.getSetting(SettingsKeys.useSystemFont);
+    _danmakuBorderSize = GStorage.getSetting(SettingsKeys.danmakuBorderSize);
+    haEnable = GStorage.getSetting(SettingsKeys.hAenable);
+    autoPlayNext = GStorage.getSetting(SettingsKeys.autoPlayNext);
+    backgroundPlayback = GStorage.getSetting(SettingsKeys.backgroundPlayback);
     brightnessVolumeGesture =
-        setting.get(SettingBoxKey.brightnessVolumeGesture, defaultValue: true);
+        GStorage.getSetting(SettingsKeys.brightnessVolumeGesture);
     unawaited(_bindAudioService());
     playerTimer = getPlayerTimer();
     windowManager.addListener(this);

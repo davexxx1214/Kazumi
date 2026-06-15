@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:webdav_client/webdav_client.dart' as webdav;
-import 'package:hive_ce/hive.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:kazumi/modules/history/history_sync.dart';
 import 'package:kazumi/services/storage/storage.dart';
@@ -35,12 +34,9 @@ class WebDav {
   Future<void> init() async {
     var directory = await getApplicationSupportDirectory();
     webDavLocalTempDirectory = Directory('${directory.path}/webdavTemp');
-    Box setting = GStorage.setting;
-    webDavURL = setting.get(SettingBoxKey.webDavURL, defaultValue: '');
-    webDavUsername =
-        setting.get(SettingBoxKey.webDavUsername, defaultValue: '');
-    webDavPassword =
-        setting.get(SettingBoxKey.webDavPassword, defaultValue: '');
+    webDavURL = GStorage.getSetting(SettingsKeys.webDavURL);
+    webDavUsername = GStorage.getSetting(SettingsKeys.webDavUsername);
+    webDavPassword = GStorage.getSetting(SettingsKeys.webDavPassword);
     if (webDavURL.isEmpty) {
       //KazumiLogger().log(Level.warning, 'WebDAV URL is not set');
       throw Exception('请先填写WebDAV URL');
@@ -231,17 +227,15 @@ class WebDav {
       await _writeDeviceHistoryChanges(localEvents);
     }
 
-    final snapshotInitialized = GStorage.setting.get(
-      SettingBoxKey.historySyncSnapshotInitialized,
-      defaultValue: false,
-    );
+    final snapshotInitialized =
+        GStorage.getSetting(SettingsKeys.historySyncSnapshotInitialized);
     if (snapshotInitialized != true ||
         await historySync.shouldCompactLocalLog()) {
       await _writeHistorySnapshot(mergedSnapshot);
       await historySync.replaceLocalEvents(const []);
       await _writeDeviceHistoryChanges(const []);
-      await GStorage.setting.put(
-        SettingBoxKey.historySyncSnapshotInitialized,
+      await GStorage.putSetting(
+        SettingsKeys.historySyncSnapshotInitialized,
         true,
       );
     }
@@ -336,11 +330,25 @@ class WebDav {
             episode: progress.episode,
             road: progress.road,
             progressMs: progress.progress.inMilliseconds,
-            lastSrc: history.lastSrc,
-            lastWatchEpisodeName: history.lastWatchEpisodeName,
           ),
         );
       }
+      events.add(
+        HistorySyncEvent(
+          eventId: 'local-state:${history.key}:watch-state',
+          deviceId: 'local-state',
+          seq: 0,
+          op: HistorySyncOp.upsertWatchState,
+          updatedAt: history.lastWatchTime.millisecondsSinceEpoch,
+          entityKey: history.key,
+          bangumiItem: history.bangumiItem,
+          adapterName: history.adapterName,
+          episode: history.lastWatchEpisode,
+          lastSrc: history.lastSrc,
+          lastWatchEpisodeName: history.lastWatchEpisodeName,
+          carriesWatchState: true,
+        ),
+      );
     }
     return events;
   }

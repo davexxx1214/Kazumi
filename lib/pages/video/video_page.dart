@@ -1052,174 +1052,174 @@ class _VideoPageState extends State<VideoPage>
     return Observer(
       builder: (context) {
         var cardList = <Widget>[];
-        for (var road in videoPageController.roadList) {
-          if (road.name == '播放列表${visibleRoad + 1}') {
-            int count = 1;
-            for (var urlItem in road.data) {
-              int count0 = count;
-              final bool isCurrent =
-                  count0 == videoPageController.selectedEpisode.episode &&
-                      visibleRoad == videoPageController.selectedEpisode.road;
+        if (visibleRoad >= 0 &&
+            visibleRoad < videoPageController.roadList.length) {
+          final road = videoPageController.roadList[visibleRoad];
+          int count = 1;
+          for (var urlItem in road.data) {
+            int count0 = count;
+            final bool isCurrent =
+                count0 == videoPageController.selectedEpisode.episode &&
+                    visibleRoad == videoPageController.selectedEpisode.road;
 
-              Widget card = Container(
-                margin: const EdgeInsets.only(bottom: 4),
-                child: Material(
-                  color: Theme.of(context).colorScheme.onInverseSurface,
-                  borderRadius: BorderRadius.circular(6),
-                  clipBehavior: Clip.hardEdge,
-                  child: InkWell(
-                    onTap: () async {
-                      if (isCurrent) {
-                        return;
-                      }
-                      KazumiLogger()
-                          .i('VideoPageController: video URL is $urlItem');
-                      _closeTabBodyAnimated();
-                      changeEpisode(count0, currentRoad: visibleRoad);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            children: [
-                              if (isCurrent) ...<Widget>[
-                                Image.asset(
-                                  'assets/images/playing.gif',
-                                  color: Theme.of(context).colorScheme.primary,
-                                  height: 12,
-                                ),
-                                const SizedBox(width: 6)
-                              ],
-                              Expanded(
-                                  child: Text(
-                                road.identifier[count0 - 1],
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color: isCurrent
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .onSurface),
-                              )),
-                              _buildDownloadStatusIcon(count0, urlItem),
-                              const SizedBox(width: 2),
+            Widget card = Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              child: Material(
+                color: Theme.of(context).colorScheme.onInverseSurface,
+                borderRadius: BorderRadius.circular(6),
+                clipBehavior: Clip.hardEdge,
+                child: InkWell(
+                  onTap: () async {
+                    if (isCurrent) {
+                      return;
+                    }
+                    KazumiLogger()
+                        .i('VideoPageController: video URL is $urlItem');
+                    _closeTabBodyAnimated();
+                    changeEpisode(count0, currentRoad: visibleRoad);
+                  },
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: [
+                            if (isCurrent) ...<Widget>[
+                              Image.asset(
+                                'assets/images/playing.gif',
+                                color: Theme.of(context).colorScheme.primary,
+                                height: 12,
+                              ),
+                              const SizedBox(width: 6)
                             ],
-                          ),
-                          const SizedBox(height: 3),
-                        ],
-                      ),
+                            Expanded(
+                                child: Text(
+                              road.identifier[count0 - 1],
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: isCurrent
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSurface),
+                            )),
+                            _buildDownloadStatusIcon(count0, urlItem),
+                            const SizedBox(width: 2),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                      ],
                     ),
                   ),
                 ),
-              );
+              ),
+            );
 
-              if (isTV) {
-                card = Focus(
-                  focusNode: isCurrent ? currentEpisodeFocusNode : null,
-                  autofocus: isCurrent,
-                  onKeyEvent: (node, event) {
-                    if (event is KeyDownEvent) {
-                      if (event.logicalKey == LogicalKeyboardKey.select ||
-                          event.logicalKey == LogicalKeyboardKey.enter ||
-                          event.logicalKey == LogicalKeyboardKey.gameButtonA) {
-                        if (!isCurrent) {
-                          KazumiLogger()
-                              .i('VideoPageController: video URL is $urlItem');
-                          _closeTabBodyAnimated();
-                          changeEpisode(count0, currentRoad: visibleRoad);
-                        }
-                        return KeyEventResult.handled;
+            if (isTV) {
+              card = Focus(
+                focusNode: isCurrent ? currentEpisodeFocusNode : null,
+                autofocus: isCurrent,
+                onKeyEvent: (node, event) {
+                  if (event is KeyDownEvent) {
+                    if (event.logicalKey == LogicalKeyboardKey.select ||
+                        event.logicalKey == LogicalKeyboardKey.enter ||
+                        event.logicalKey == LogicalKeyboardKey.gameButtonA) {
+                      if (!isCurrent) {
+                        KazumiLogger()
+                            .i('VideoPageController: video URL is $urlItem');
+                        _closeTabBodyAnimated();
+                        changeEpisode(count0, currentRoad: visibleRoad);
                       }
+                      return KeyEventResult.handled;
                     }
-                    return KeyEventResult.ignored;
-                  },
-                  child: Builder(
-                    builder: (context) {
-                      final bool hasFocus = Focus.of(context).hasFocus;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 4),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(6),
-                          border: hasFocus
-                              ? Border.all(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  width: 2,
-                                )
-                              : null,
-                        ),
-                        child: Material(
-                          color: hasFocus
-                              ? Theme.of(context).colorScheme.primaryContainer
-                              : Theme.of(context).colorScheme.onInverseSurface,
-                          borderRadius: BorderRadius.circular(6),
-                          clipBehavior: Clip.hardEdge,
-                          child: InkWell(
-                            onTap: () async {
-                              if (isCurrent) {
-                                return;
-                              }
-                              KazumiLogger().i(
-                                  'VideoPageController: video URL is $urlItem');
-                              _closeTabBodyAnimated();
-                              changeEpisode(count0, currentRoad: visibleRoad);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 10),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Row(
-                                    children: [
-                                      if (isCurrent) ...<Widget>[
-                                        Image.asset(
-                                          'assets/images/playing.gif',
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                          height: 12,
-                                        ),
-                                        const SizedBox(width: 6)
-                                      ],
-                                      Expanded(
-                                          child: Text(
-                                        road.identifier[count0 - 1],
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                            fontSize: 13,
-                                            color: isCurrent || hasFocus
-                                                ? Theme.of(context)
-                                                    .colorScheme
-                                                    .primary
-                                                : Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface),
-                                      )),
-                                      _buildDownloadStatusIcon(count0, urlItem),
-                                      const SizedBox(width: 2),
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: Builder(
+                  builder: (context) {
+                    final bool hasFocus = Focus.of(context).hasFocus;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        border: hasFocus
+                            ? Border.all(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                      child: Material(
+                        color: hasFocus
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : Theme.of(context).colorScheme.onInverseSurface,
+                        borderRadius: BorderRadius.circular(6),
+                        clipBehavior: Clip.hardEdge,
+                        child: InkWell(
+                          onTap: () async {
+                            if (isCurrent) {
+                              return;
+                            }
+                            KazumiLogger().i(
+                                'VideoPageController: video URL is $urlItem');
+                            _closeTabBodyAnimated();
+                            changeEpisode(count0, currentRoad: visibleRoad);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Row(
+                                  children: [
+                                    if (isCurrent) ...<Widget>[
+                                      Image.asset(
+                                        'assets/images/playing.gif',
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        height: 12,
+                                      ),
+                                      const SizedBox(width: 6)
                                     ],
-                                  ),
-                                  const SizedBox(height: 3),
-                                ],
-                              ),
+                                    Expanded(
+                                        child: Text(
+                                      road.identifier[count0 - 1],
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: isCurrent || hasFocus
+                                              ? Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                              : Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface),
+                                    )),
+                                    _buildDownloadStatusIcon(count0, urlItem),
+                                    const SizedBox(width: 2),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                              ],
                             ),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                );
-              }
-
-              cardList.add(card);
-              count++;
+                      ),
+                    );
+                  },
+                ),
+              );
             }
+
+            cardList.add(card);
+            count++;
           }
         }
 

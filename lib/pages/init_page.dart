@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:hive_ce/hive.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/pages/my/my_controller.dart';
 import 'package:kazumi/services/sync/bangumi_sync_service.dart';
@@ -35,7 +34,6 @@ class _InitPageState extends State<InitPage> {
   final MyController myController = Modular.get<MyController>();
   final DownloadController downloadController =
       Modular.get<DownloadController>();
-  Box setting = GStorage.setting;
   late final ThemeProvider themeProvider;
 
   @override
@@ -116,14 +114,11 @@ class _InitPageState extends State<InitPage> {
   }
 
   void _startDefaultPage() {
-    final defaultStartupPage = setting.get(
-      SettingBoxKey.defaultStartupPage,
-      defaultValue: '/tab/popular/',
-    );
+    final defaultStartupPage =
+        GStorage.getSetting(SettingsKeys.defaultStartupPage);
     // Workaround for dynamic_color. dynamic_color need PlatformChannel to get color, it takes time.
     // setDynamic here to avoid white screen flash when themeMode is dark.
-    themeProvider.setDynamic(
-        setting.get(SettingBoxKey.useDynamicColor, defaultValue: false));
+    themeProvider.setDynamic(GStorage.getSetting(SettingsKeys.useDynamicColor));
     Modular.to.navigate(defaultStartupPage);
   }
 
@@ -141,8 +136,7 @@ class _InitPageState extends State<InitPage> {
   }
 
   Future<void> _webDavInit() async {
-    bool webDavEnable =
-        await setting.get(SettingBoxKey.webDavEnable, defaultValue: false);
+    bool webDavEnable = await GStorage.getSetting(SettingsKeys.webDavEnable);
     if (webDavEnable) {
       var webDav = WebDav();
       KazumiLogger().i('WebDav: Starting WebDav initialization');
@@ -169,10 +163,8 @@ class _InitPageState extends State<InitPage> {
   }
 
   Future<void> _bangumiInit() async {
-    bool bangumiEnable = await setting.get(
-      SettingBoxKey.bangumiSyncEnable,
-      defaultValue: false,
-    );
+    bool bangumiEnable =
+        await GStorage.getSetting(SettingsKeys.bangumiSyncEnable);
     if (bangumiEnable) {
       var bangumi = BangumiSyncService();
       KazumiLogger().i('Bangumi: Starting Bangumi initialization');
@@ -180,7 +172,7 @@ class _InitPageState extends State<InitPage> {
         await bangumi.init();
       } catch (e) {
         bangumi.reset();
-        await setting.put(SettingBoxKey.bangumiSyncEnable, false);
+        await GStorage.putSetting(SettingsKeys.bangumiSyncEnable, false);
         KazumiLogger().w(
           'Bangumi: initialization failed, disabling Bangumi sync until user re-enables it',
           error: e,
@@ -234,7 +226,7 @@ class _InitPageState extends State<InitPage> {
 
   Future<void> _showShortcutDialog() async {
     if (!Platform.isWindows) return;
-    if (setting.get(SettingBoxKey.shortcutDialogShown, defaultValue: false)) {
+    if (GStorage.getSetting(SettingsKeys.shortcutDialogShown)) {
       return;
     }
 
@@ -257,7 +249,7 @@ class _InitPageState extends State<InitPage> {
       ),
     );
 
-    await setting.put(SettingBoxKey.shortcutDialogShown, true);
+    await GStorage.putSetting(SettingsKeys.shortcutDialogShown, true);
     if (create ?? false) {
       final success = await WindowsShortcut.createDesktopShortcut();
       KazumiDialog.showToast(message: success ? '桌面快捷方式已创建' : '桌面快捷方式创建失败');
@@ -336,7 +328,7 @@ class _InitPageState extends State<InitPage> {
         return PopScope(
           canPop: false,
           child: AlertDialog(
-            title: const Text('更新镜像'),
+            title: const Text('更新来源'),
             content: const Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,7 +343,7 @@ class _InitPageState extends State<InitPage> {
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
                   child: Text(
-                    'Github镜像为大多数情况下的最佳选择。如果您使用F-Droid应用商店, 请选择F-Droid镜像。',
+                    'Github 检查更新为大多数情况下的最佳选择。如果您使用 F-Droid 应用商店，请选择 F-Droid。',
                     textAlign: TextAlign.left,
                   ),
                 ),
@@ -360,7 +352,7 @@ class _InitPageState extends State<InitPage> {
             actions: [
               TextButton(
                 onPressed: () {
-                  setting.put(SettingBoxKey.autoUpdate, true);
+                  GStorage.putSetting(SettingsKeys.autoUpdate, true);
                   KazumiDialog.dismiss();
                 },
                 child: const Text(
@@ -369,7 +361,7 @@ class _InitPageState extends State<InitPage> {
               ),
               TextButton(
                 onPressed: () {
-                  setting.put(SettingBoxKey.autoUpdate, false);
+                  GStorage.putSetting(SettingsKeys.autoUpdate, false);
                   KazumiDialog.dismiss();
                 },
                 child: Text(
@@ -386,8 +378,7 @@ class _InitPageState extends State<InitPage> {
   }
 
   Future<void> _update() async {
-    bool autoUpdate =
-        await setting.get(SettingBoxKey.autoUpdate, defaultValue: true);
+    bool autoUpdate = await GStorage.getSetting(SettingsKeys.autoUpdate);
     if (autoUpdate) {
       Modular.get<MyController>().checkUpdate(type: 'auto');
     }

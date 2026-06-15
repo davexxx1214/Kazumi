@@ -2,7 +2,6 @@
 
 import 'package:canvas_danmaku/canvas_danmaku.dart' as canvas;
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:hive_ce/hive.dart';
 import 'package:kazumi/modules/danmaku/danmaku_module.dart';
 import 'package:kazumi/pages/player/controller/player_models.dart';
 import 'package:kazumi/pages/download/download_controller.dart';
@@ -88,17 +87,14 @@ class DanmakuTimeline {
 
 abstract class _PlayerDanmakuController with Store {
   _PlayerDanmakuController({
-    required this.setting,
     required this.isLocalPlayback,
   });
 
-  final Box setting;
   final bool Function() isLocalPlayback;
 
   late canvas.DanmakuController canvasController;
 
-  @observable
-  Map<int, List<DanmakuEntry>> danDanmakus = {};
+  final Map<int, List<DanmakuEntry>> danDanmakus = {};
   @observable
   bool danmakuOn = false;
   @observable
@@ -111,9 +107,8 @@ abstract class _PlayerDanmakuController with Store {
   int get scheduledDanmakuGeneration => _scheduledDanmakuGeneration;
 
   double get timelineOffsetSeconds {
-    final offset =
-        setting.get(SettingBoxKey.danmakuTimeOffset, defaultValue: 0.0);
-    return offset is num ? offset.toDouble() : 0.0;
+    final offset = GStorage.getSetting(SettingsKeys.danmakuTimeOffset);
+    return offset;
   }
 
   int? resolveDanmakuSecond(Duration playbackPosition) {
@@ -129,6 +124,11 @@ abstract class _PlayerDanmakuController with Store {
       return const [];
     }
     return danDanmakus[danmakuSecond] ?? const [];
+  }
+
+  @action
+  void setDanmakuEnabled(bool value) {
+    danmakuOn = value;
   }
 
   void clearAndInvalidateScheduledDanmakus() {
@@ -156,11 +156,13 @@ abstract class _PlayerDanmakuController with Store {
     );
   }
 
+  @action
   void beginDanmakuLoad() {
     danDanmakus.clear();
     danmakuLoading = true;
   }
 
+  @action
   void applyDanmakuLoad(
     DanmakuLoadResult result, {
     required bool enableDanmaku,
@@ -171,6 +173,7 @@ abstract class _PlayerDanmakuController with Store {
     danmakuLoading = false;
   }
 
+  @action
   void applyUnavailableDanmakuLoad(DanmakuLoadResult result) {
     bangumiID = result.bangumiID;
     danDanmakus.clear();
@@ -178,6 +181,7 @@ abstract class _PlayerDanmakuController with Store {
     danmakuLoading = false;
   }
 
+  @action
   void finishDanmakuLoad({bool disableDanmaku = false}) {
     if (disableDanmaku) {
       danDanmakus.clear();
@@ -293,6 +297,7 @@ abstract class _PlayerDanmakuController with Store {
     return DanmakuLoadResult.failed(bangumiID: nextBangumiID);
   }
 
+  @action
   Future<bool> getDanDanmakuByEpisodeID(int episodeID) async {
     KazumiLogger().i('PlayerController: attempting to get danmaku $episodeID');
     danmakuLoading = true;
@@ -311,25 +316,21 @@ abstract class _PlayerDanmakuController with Store {
 
   void addDanmakus(List<DanmakuEntry> danmakus) {
     final bool danmakuDeduplicationEnable =
-        setting.get(SettingBoxKey.danmakuDeduplication, defaultValue: false);
+        GStorage.getSetting(SettingsKeys.danmakuDeduplication);
 
     final List<DanmakuEntry> listToAdd = danmakuDeduplicationEnable
         ? mergeDuplicateDanmakus(danmakus, timeWindowSeconds: 5)
         : danmakus;
 
-    for (var element in listToAdd) {
-      var danmakuList =
-          danDanmakus[element.time.toInt()] ?? List.empty(growable: true);
-      danmakuList.add(element);
-      danDanmakus[element.time.toInt()] = danmakuList;
+    for (final element in listToAdd) {
+      final danmakuSecond = element.time.toInt();
+      (danDanmakus[danmakuSecond] ??= <DanmakuEntry>[]).add(element);
     }
   }
 
   void updateDanmakuSpeed(double playerSpeed) {
-    final baseDuration =
-        setting.get(SettingBoxKey.danmakuDuration, defaultValue: 8.0);
-    final followSpeed =
-        setting.get(SettingBoxKey.danmakuFollowSpeed, defaultValue: true);
+    final baseDuration = GStorage.getSetting(SettingsKeys.danmakuDuration);
+    final followSpeed = GStorage.getSetting(SettingsKeys.danmakuFollowSpeed);
 
     final duration = followSpeed ? (baseDuration / playerSpeed) : baseDuration;
     canvasController
