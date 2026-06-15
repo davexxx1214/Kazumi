@@ -662,13 +662,14 @@ class _PlayerItemState extends State<PlayerItem>
   KeyEventResult _handleTVSelectKey() {
     switch (_tvMode) {
       case TVPlayerMode.fullscreen:
-        // 全屏模式：确定键切换播放/暂停
+        // 全屏播放时暂停并进入控制栏焦点模式。
         if (playerController.playback.playing) {
-          // 暂停并显示进度条
           playerController.pause();
           displayVideoController();
+          setState(() {
+            _tvMode = TVPlayerMode.pauseMenu;
+          });
         } else {
-          // 恢复播放并隐藏进度条
           playerController.play();
           hideVideoController();
         }
@@ -1358,11 +1359,8 @@ class _PlayerItemState extends State<PlayerItem>
           constraints: const BoxConstraints(maxWidth: 560),
           child: ListView(
             shrinkWrap: true,
-            children: danmakuSearchResponse.animes.asMap().entries.map((entry) {
-              final index = entry.key;
-              final danmakuInfo = entry.value;
+            children: danmakuSearchResponse.animes.map((danmakuInfo) {
               return ListTile(
-                autofocus: isTV && index == 0,
                 title: Text(danmakuInfo.animeTitle),
                 onTap: () async {
                   KazumiDialog.dismiss();
@@ -1387,14 +1385,9 @@ class _PlayerItemState extends State<PlayerItem>
                         constraints: const BoxConstraints(maxWidth: 560),
                         child: ListView(
                           shrinkWrap: true,
-                          children: danmakuEpisodeResponse.episodes
-                              .asMap()
-                              .entries
-                              .map((entry) {
-                            final index = entry.key;
-                            final episode = entry.value;
+                          children:
+                              danmakuEpisodeResponse.episodes.map((episode) {
                             return ListTile(
-                              autofocus: isTV && index == 0,
                               title: Text(episode.episodeTitle),
                               onTap: () async {
                                 KazumiDialog.dismiss();
@@ -1445,7 +1438,6 @@ class _PlayerItemState extends State<PlayerItem>
           title: const Text('弹幕检索'),
           content: TextFormField(
             initialValue: searchKeyword,
-            autofocus: isTV,
             decoration: const InputDecoration(
               hintText: '番剧名',
             ),

@@ -92,6 +92,12 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
       Modular.get<DownloadController>();
   final TextEditingController textController = TextEditingController();
   final FocusNode textFieldFocus = FocusNode();
+  final FocusNode _tvPlayPauseFocus = FocusNode(debugLabel: 'TV play or pause');
+  final FocusNode _tvNextEpisodeFocus =
+      FocusNode(debugLabel: 'TV next episode');
+  final FocusNode _tvDanmakuFocus = FocusNode(debugLabel: 'TV danmaku');
+  final FocusNode _tvEpisodeListFocus =
+      FocusNode(debugLabel: 'TV episode list');
   PlayerPanelHold? _danmakuTextFieldHold;
   // SVG Caches
   String? cachedSvgString;
@@ -107,6 +113,10 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
     _releaseDanmakuTextFieldPanel();
     textController.dispose();
     textFieldFocus.dispose();
+    _tvPlayPauseFocus.dispose();
+    _tvNextEpisodeFocus.dispose();
+    _tvDanmakuFocus.dispose();
+    _tvEpisodeListFocus.dispose();
     super.dispose();
   }
 
@@ -1326,33 +1336,34 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
   Widget _buildTVFocusButton({
     required Widget icon,
     required VoidCallback onPressed,
+    required FocusNode focusNode,
     String? tooltip,
     bool autofocus = false,
   }) {
-    return Focus(
-      autofocus: autofocus,
-      child: Builder(
-        builder: (context) {
-          final focusNode = Focus.of(context);
-          return Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: focusNode.hasFocus
-                  ? Border.all(
-                      color: Theme.of(context).colorScheme.primary, width: 2)
-                  : null,
-              color: focusNode.hasFocus
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
-                  : Colors.transparent,
-            ),
-            child: IconButton(
-              color: Colors.white,
-              icon: icon,
-              onPressed: onPressed,
-              tooltip: tooltip,
-            ),
-          );
-        },
+    return ListenableBuilder(
+      listenable: focusNode,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: focusNode.hasFocus
+                ? Border.all(
+                    color: Theme.of(context).colorScheme.primary, width: 2)
+                : null,
+            color: focusNode.hasFocus
+                ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
+                : Colors.transparent,
+          ),
+          child: child,
+        );
+      },
+      child: IconButton(
+        focusNode: focusNode,
+        autofocus: autofocus,
+        color: Colors.white,
+        icon: icon,
+        onPressed: onPressed,
+        tooltip: tooltip,
       ),
     );
   }
@@ -1415,6 +1426,7 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                     children: [
                       // 播放/暂停
                       _buildTVFocusButton(
+                        focusNode: _tvPlayPauseFocus,
                         icon: Icon(playerController.playback.playing
                             ? Icons.pause_rounded
                             : Icons.play_arrow_rounded),
@@ -1426,6 +1438,7 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                       const SizedBox(width: 16),
                       // 下一集
                       _buildTVFocusButton(
+                        focusNode: _tvNextEpisodeFocus,
                         icon: const Icon(Icons.skip_next_rounded),
                         onPressed: () => widget.handlePreNextEpisode('next'),
                         tooltip: '下一集',
@@ -1433,6 +1446,7 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                       const SizedBox(width: 16),
                       // 弹幕开关
                       _buildTVFocusButton(
+                        focusNode: _tvDanmakuFocus,
                         icon: playerController.danmaku.danmakuOn
                             ? danmakuOnIcon(context)
                             : cachedDanmakuOffIcon!,
@@ -1444,6 +1458,7 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                       const SizedBox(width: 16),
                       // 剧集列表
                       _buildTVFocusButton(
+                        focusNode: _tvEpisodeListFocus,
                         icon: const Icon(Icons.menu_open_rounded),
                         onPressed: () {
                           widget.toggleMenu();
@@ -1461,7 +1476,6 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
       },
     );
   }
-
 
   Widget get leftControlWidget {
     return SafeArea(
