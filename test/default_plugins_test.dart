@@ -21,12 +21,10 @@ void main() {
     expect(
       pluginNames,
       unorderedEquals([
-        '7sefun',
         'AGE',
         'DM84',
         'LMM',
         'MXdm',
-        'aafun',
         'baimao',
         'enlie',
         'giriGiriLove',

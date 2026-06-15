@@ -488,6 +488,11 @@ class SettingsKeys {
     false,
     group: SettingGroup.sync,
   );
+  static const pluginSourceIndexUrl = SettingKey<String>(
+    _SettingBoxKey.pluginSourceIndexUrl,
+    '',
+    group: SettingGroup.misc,
+  );
 
   static final List<SettingKey<Object?>> all = [
     hAenable,
@@ -579,6 +584,7 @@ class SettingsKeys {
     historySyncDeviceId,
     historySyncSequence,
     historySyncSnapshotInitialized,
+    pluginSourceIndexUrl,
   ];
 
   static List<SettingKey<Object?>> byGroup(SettingGroup group) {
@@ -685,5 +691,6 @@ class _SettingBoxKey {
       brightnessVolumeGesture = 'brightnessVolumeGesture',
       historySyncDeviceId = 'historySyncDeviceId',
       historySyncSequence = 'historySyncSequence',
-      historySyncSnapshotInitialized = 'historySyncSnapshotInitialized';
+      historySyncSnapshotInitialized = 'historySyncSnapshotInitialized',
+      pluginSourceIndexUrl = 'pluginSourceIndexUrl';
 }

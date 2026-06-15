@@ -440,7 +440,6 @@ class _PlayerItemState extends State<PlayerItem>
       rewindRepeatTimer?.cancel();
       rewindRepeatTimer = null;
     }
-    }
   }
 
   Future<void> handleShortcutForwardUp() async {
@@ -524,8 +523,8 @@ class _PlayerItemState extends State<PlayerItem>
   }
 
   void _handleTVSpeedUp() {
-    final double defaultShortcutForwardPlaySpeed = setting
-        .get(SettingBoxKey.defaultShortcutForwardPlaySpeed, defaultValue: 2.0);
+    final double defaultShortcutForwardPlaySpeed =
+        GStorage.getSetting(SettingsKeys.defaultShortcutForwardPlaySpeed);
     if (!playerController.panel.showPlaySpeed) {
       lastPlayerSpeed = playerController.playback.playerSpeed;
     }

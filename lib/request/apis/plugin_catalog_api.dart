@@ -54,11 +54,8 @@ class PluginCatalogApi {
   }
 
   static String _configuredIndexUrl() {
-    final configured = GStorage.setting.get(
-      SettingBoxKey.pluginSourceIndexUrl,
-      defaultValue: ApiEndpoints.defaultPluginSourceIndex,
-    );
-    if (configured is String && configured.trim().isNotEmpty) {
+    final configured = GStorage.getSetting(SettingsKeys.pluginSourceIndexUrl);
+    if (configured.trim().isNotEmpty) {
       return _normalizeIndexUrl(configured);
     }
     return _normalizeIndexUrl(ApiEndpoints.defaultPluginSourceIndex);

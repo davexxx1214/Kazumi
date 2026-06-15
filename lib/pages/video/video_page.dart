@@ -10,7 +10,6 @@ import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/pages/player/player_item.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:hive_ce/hive.dart';
 import 'package:kazumi/services/storage/storage.dart';
 import 'package:kazumi/services/player/pip_utils.dart';
 import 'package:kazumi/bean/appbar/drag_to_move_bar.dart' as dtb;
@@ -36,7 +35,6 @@ class VideoPage extends StatefulWidget {
 
 class _VideoPageState extends State<VideoPage>
     with TickerProviderStateMixin, WindowListener {
-  Box setting = GStorage.setting;
   final VideoPageController videoPageController =
       Modular.get<VideoPageController>();
   PlayerController? _playerController;
@@ -97,9 +95,9 @@ class _VideoPageState extends State<VideoPage>
       curve: Curves.easeIn,
     ));
 
-    playResume = setting.get(SettingBoxKey.playResume, defaultValue: true);
+    playResume = GStorage.getSetting(SettingsKeys.playResume);
     disableAnimations =
-        setting.get(SettingBoxKey.playerDisableAnimations, defaultValue: false);
+        GStorage.getSetting(SettingsKeys.playerDisableAnimations);
 
     // PlayerController is route-scoped and may not be registered until after
     // the first frame.
