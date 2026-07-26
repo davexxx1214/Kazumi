@@ -83,9 +83,26 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
 
       expect(scrollableState.position.pixels, greaterThan(0));
-      expect(find.text('清除'), findsOneWidget);
 
-      await tester.tap(find.text('清除'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      final clearButton = tester.widget<FloatingActionButton>(
+        find.widgetWithText(FloatingActionButton, '清除'),
+      );
+      expect(clearButton.focusNode?.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      final copyButton = tester.widget<FloatingActionButton>(
+        find.widgetWithIcon(FloatingActionButton, Icons.copy),
+      );
+      expect(copyButton.focusNode?.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(clearButton.focusNode?.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
       expect(find.text('暂无日志'), findsOneWidget);
     },

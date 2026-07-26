@@ -53,6 +53,8 @@ class _LogsPageState extends State<LogsPage> {
   final List<String> _logLines = [];
   final ScrollController _scrollController = ScrollController();
   final FocusNode _scrollFocusNode = FocusNode(debugLabel: 'logs-scroll');
+  final FocusNode _clearFocusNode = FocusNode(debugLabel: 'logs-clear');
+  final FocusNode _copyFocusNode = FocusNode(debugLabel: 'logs-copy');
 
   bool _isLoading = true;
   bool _hasError = false;
@@ -75,6 +77,8 @@ class _LogsPageState extends State<LogsPage> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _scrollFocusNode.dispose();
+    _clearFocusNode.dispose();
+    _copyFocusNode.dispose();
     super.dispose();
   }
 
@@ -93,9 +97,23 @@ class _LogsPageState extends State<LogsPage> {
   }
 
   KeyEventResult _handleTVScrollKey(FocusNode node, KeyEvent event) {
-    if (!isTV ||
-        (event is! KeyDownEvent && event is! KeyRepeatEvent) ||
-        !_scrollController.hasClients) {
+    if (!isTV || (event is! KeyDownEvent && event is! KeyRepeatEvent)) {
+      return KeyEventResult.ignored;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      if (event is KeyDownEvent) {
+        _clearFocusNode.requestFocus();
+      }
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      if (event is KeyDownEvent) {
+        _copyFocusNode.requestFocus();
+      }
+      return KeyEventResult.handled;
+    }
+    if (!_scrollController.hasClients) {
       return KeyEventResult.ignored;
     }
 
@@ -125,6 +143,44 @@ class _LogsPageState extends State<LogsPage> {
       ),
     );
     return KeyEventResult.handled;
+  }
+
+  KeyEventResult _handleClearButtonKey(FocusNode node, KeyEvent event) {
+    if (!isTV || (event is! KeyDownEvent && event is! KeyRepeatEvent)) {
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      if (event is KeyDownEvent) {
+        _scrollFocusNode.requestFocus();
+      }
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      if (event is KeyDownEvent) {
+        _copyFocusNode.requestFocus();
+      }
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _handleCopyButtonKey(FocusNode node, KeyEvent event) {
+    if (!isTV || (event is! KeyDownEvent && event is! KeyRepeatEvent)) {
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      if (event is KeyDownEvent) {
+        _clearFocusNode.requestFocus();
+      }
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      if (event is KeyDownEvent) {
+        _scrollFocusNode.requestFocus();
+      }
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   Future<void> _loadLogs() async {
@@ -300,12 +356,18 @@ class _LogsPageState extends State<LogsPage> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         if (isTV)
-          FloatingActionButton.extended(
-            heroTag: null,
-            onPressed: _clearLogs,
-            tooltip: '清空日志',
-            icon: const Icon(Icons.clear_all),
-            label: const Text('清除'),
+          Focus(
+            canRequestFocus: false,
+            skipTraversal: true,
+            onKeyEvent: _handleClearButtonKey,
+            child: FloatingActionButton.extended(
+              heroTag: null,
+              focusNode: _clearFocusNode,
+              onPressed: _clearLogs,
+              tooltip: '清空日志',
+              icon: const Icon(Icons.clear_all),
+              label: const Text('清除'),
+            ),
           )
         else
           FloatingActionButton(
@@ -315,11 +377,17 @@ class _LogsPageState extends State<LogsPage> {
             child: const Icon(Icons.clear_all),
           ),
         const SizedBox(width: 15),
-        FloatingActionButton(
-          heroTag: null,
-          onPressed: _copyLogs,
-          tooltip: '复制日志',
-          child: const Icon(Icons.copy),
+        Focus(
+          canRequestFocus: false,
+          skipTraversal: isTV,
+          onKeyEvent: _handleCopyButtonKey,
+          child: FloatingActionButton(
+            heroTag: null,
+            focusNode: _copyFocusNode,
+            onPressed: _copyLogs,
+            tooltip: '复制日志',
+            child: const Icon(Icons.copy),
+          ),
         ),
       ],
     );

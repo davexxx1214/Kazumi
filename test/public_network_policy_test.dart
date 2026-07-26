@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kazumi/request/config/api_endpoints.dart';
+import 'package:kazumi/request/core/network_config.dart';
 import 'package:kazumi/services/network/public_network_policy.dart';
 
 void main() {
@@ -49,5 +51,24 @@ void main() {
       PublicNetworkPolicy.validate(Uri.parse('http://localhost/admin')),
       throwsA(isA<UnsafeNetworkTargetException>()),
     );
+  });
+
+  test('public target adapter negotiates TLS for HTTPS requests', () async {
+    final adapter = const NetworkConfig(enableLog: false).createAdapter(
+      publicTargetsOnly: true,
+    );
+    final client = adapter.createHttpClient!()..findProxy = (_) => 'DIRECT';
+    addTearDown(() {
+      client.close(force: true);
+      adapter.close(force: true);
+    });
+
+    final request = await client.getUrl(
+      Uri.parse('${ApiEndpoints.pluginShop}index.json'),
+    );
+    final response = await request.close();
+    await response.drain<void>();
+
+    expect(response.statusCode, HttpStatus.ok);
   });
 }

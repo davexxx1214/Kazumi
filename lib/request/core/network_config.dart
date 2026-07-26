@@ -38,7 +38,24 @@ class NetworkConfig {
               return Socket.startConnect(proxyHost, proxyPort);
             }
             final addresses = await PublicNetworkPolicy.resolve(uri);
-            return Socket.startConnect(addresses.first, uri.port);
+            final socketTask = await Socket.startConnect(
+              addresses.first,
+              uri.port,
+            );
+            if (uri.scheme == 'http') {
+              return socketTask;
+            }
+            final secureSocket = socketTask.socket.then<Socket>(
+              (socket) => SecureSocket.secure(
+                socket,
+                host: uri.host,
+                onBadCertificate: allowBadCertificates ? (_) => true : null,
+              ),
+            );
+            return ConnectionTask.fromSocket<Socket>(
+              secureSocket,
+              socketTask.cancel,
+            );
           };
         }
         if (hasProxy) {
