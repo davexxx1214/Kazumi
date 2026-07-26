@@ -1,14 +1,49 @@
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:kazumi/bean/dialog/dialog_helper.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:kazumi/bean/appbar/sys_app_bar.dart';
+import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/bean/widget/empty_state_widget.dart';
+import 'package:kazumi/services/logging/logger.dart';
+import 'package:kazumi/utils/constants.dart';
+import 'package:path_provider/path_provider.dart';
+
+abstract interface class LogsRepository {
+  Future<String?> read();
+
+  Future<void> clear();
+}
+
+class FileLogsRepository implements LogsRepository {
+  const FileLogsRepository();
+
+  @override
+  Future<String?> read() async {
+    final directory = await getApplicationSupportDirectory();
+    final file = File('${directory.path}/logs/kazumi_logs.log');
+    if (!await file.exists()) {
+      return null;
+    }
+    return file.readAsString();
+  }
+
+  @override
+  Future<void> clear() async {
+    if (!await clearLogs()) {
+      throw StateError('Failed to clear logs');
+    }
+  }
+}
 
 class LogsPage extends StatefulWidget {
-  const LogsPage({super.key});
+  const LogsPage({
+    super.key,
+    this.repository = const FileLogsRepository(),
+  });
+
+  final LogsRepository repository;
 
   @override
   State<LogsPage> createState() => _LogsPageState();
@@ -17,6 +52,7 @@ class LogsPage extends StatefulWidget {
 class _LogsPageState extends State<LogsPage> {
   final List<String> _logLines = [];
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _scrollFocusNode = FocusNode(debugLabel: 'logs-scroll');
 
   bool _isLoading = true;
   bool _hasError = false;
@@ -38,6 +74,7 @@ class _LogsPageState extends State<LogsPage> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _scrollFocusNode.dispose();
     super.dispose();
   }
 
@@ -55,17 +92,49 @@ class _LogsPageState extends State<LogsPage> {
     }
   }
 
+  KeyEventResult _handleTVScrollKey(FocusNode node, KeyEvent event) {
+    if (!isTV ||
+        (event is! KeyDownEvent && event is! KeyRepeatEvent) ||
+        !_scrollController.hasClients) {
+      return KeyEventResult.ignored;
+    }
+
+    final direction = switch (event.logicalKey) {
+      LogicalKeyboardKey.arrowDown => 1.0,
+      LogicalKeyboardKey.arrowUp => -1.0,
+      _ => 0.0,
+    };
+    if (direction == 0) {
+      return KeyEventResult.ignored;
+    }
+
+    final position = _scrollController.position;
+    final target =
+        (position.pixels + direction * position.viewportDimension * 0.75)
+            .clamp(position.minScrollExtent, position.maxScrollExtent)
+            .toDouble();
+    if ((target - position.pixels).abs() < 1) {
+      return KeyEventResult.ignored;
+    }
+
+    unawaited(
+      _scrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      ),
+    );
+    return KeyEventResult.handled;
+  }
+
   Future<void> _loadLogs() async {
     if (!mounted) return;
 
     try {
-      final file = await _getLogsFile();
+      final content = await widget.repository.read();
       if (!mounted) return;
 
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        if (!mounted) return;
-
+      if (content != null) {
         _allLines = content.split('\n');
         _fullContent = content;
 
@@ -80,6 +149,7 @@ class _LogsPageState extends State<LogsPage> {
           _displayedLines = initialCount;
           _isLoading = false;
         });
+        _focusLogsOnTV();
       } else {
         if (!mounted) return;
         setState(() {
@@ -118,16 +188,19 @@ class _LogsPageState extends State<LogsPage> {
     });
   }
 
-  Future<File> _getLogsFile() async {
-    final directory = await getApplicationSupportDirectory();
-    final path = directory.path;
-    return File('$path/logs/kazumi_logs.log');
+  void _focusLogsOnTV() {
+    if (!isTV) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _scrollFocusNode.requestFocus();
+      }
+    });
   }
 
   Future<void> _clearLogs() async {
     try {
-      final file = await _getLogsFile();
-      await file.writeAsString('');
+      await widget.repository.clear();
       if (!mounted) return;
 
       setState(() {
@@ -191,25 +264,31 @@ class _LogsPageState extends State<LogsPage> {
         scrollDirection: Axis.horizontal,
         child: SizedBox(
           width: MediaQuery.of(context).size.width.clamp(600, double.infinity),
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.all(16.0),
-            shrinkWrap: false,
-            itemCount: _logLines.length,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4.0),
-                child: Text(
-                  _logLines[index],
-                  softWrap: false,
-                  overflow: TextOverflow.clip,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
+          child: Focus(
+            focusNode: _scrollFocusNode,
+            autofocus: isTV,
+            canRequestFocus: isTV,
+            onKeyEvent: _handleTVScrollKey,
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16.0),
+              shrinkWrap: false,
+              itemCount: _logLines.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4.0),
+                  child: Text(
+                    _logLines[index],
+                    softWrap: false,
+                    overflow: TextOverflow.clip,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -220,12 +299,21 @@ class _LogsPageState extends State<LogsPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        FloatingActionButton(
-          heroTag: null,
-          onPressed: _clearLogs,
-          tooltip: '清空日志',
-          child: const Icon(Icons.clear_all),
-        ),
+        if (isTV)
+          FloatingActionButton.extended(
+            heroTag: null,
+            onPressed: _clearLogs,
+            tooltip: '清空日志',
+            icon: const Icon(Icons.clear_all),
+            label: const Text('清除'),
+          )
+        else
+          FloatingActionButton(
+            heroTag: null,
+            onPressed: _clearLogs,
+            tooltip: '清空日志',
+            child: const Icon(Icons.clear_all),
+          ),
         const SizedBox(width: 15),
         FloatingActionButton(
           heroTag: null,
