@@ -27,7 +27,7 @@ class BangumiCardV extends StatelessWidget {
       );
       return;
     }
-    Modular.to.pushNamed('/info/', arguments: bangumiItem);
+    context.pushNamed('/info/', arguments: bangumiItem);
   }
 
   Widget _buildCard(BuildContext context, {bool hasFocus = false}) {

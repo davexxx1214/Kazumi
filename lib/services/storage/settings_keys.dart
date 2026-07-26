@@ -1,4 +1,5 @@
 import 'package:kazumi/utils/constants.dart';
+import 'package:kazumi/services/player/syncplay_endpoint.dart';
 
 enum SettingGroup {
   player,
@@ -59,6 +60,11 @@ class SettingsKeys {
   );
   static const autoUpdate = SettingKey<bool>(
     _SettingBoxKey.autoUpdate,
+    true,
+    group: SettingGroup.update,
+  );
+  static const checkPluginUpdateOnStartup = SettingKey<bool>(
+    'checkPluginUpdateOnStartup',
     true,
     group: SettingGroup.update,
   );
@@ -245,12 +251,12 @@ class SettingsKeys {
   );
   static const enableGitProxy = SettingKey<bool>(
     _SettingBoxKey.enableGitProxy,
-    false,
+    true,
     group: SettingGroup.proxy,
   );
   static const enableBangumiProxy = SettingKey<bool>(
     _SettingBoxKey.enableBangumiProxy,
-    false,
+    true,
     group: SettingGroup.proxy,
   );
   static const enableSystemProxy = SettingKey<bool>(
@@ -325,7 +331,7 @@ class SettingsKeys {
   );
   static const syncPlayEndPoint = SettingKey<String>(
     _SettingBoxKey.syncPlayEndPoint,
-    '127.0.0.1:8999',
+    defaultSyncPlayEndPoint,
     group: SettingGroup.player,
   );
   static const androidEnableOpenSLES = SettingKey<bool>(
@@ -343,13 +349,13 @@ class SettingsKeys {
     false,
     group: SettingGroup.player,
   );
-  static const defaultSuperResolutionType = SettingKey<int>(
-    _SettingBoxKey.defaultSuperResolutionType,
+  static const defaultSuperResolutionMode = SettingKey<int>(
+    _SettingBoxKey.defaultSuperResolutionMode,
     1,
     group: SettingGroup.player,
   );
-  static const superResolutionWarn = SettingKey<bool>(
-    _SettingBoxKey.superResolutionWarn,
+  static const disableSuperResolutionWarning = SettingKey<bool>(
+    _SettingBoxKey.disableSuperResolutionWarning,
     false,
     group: SettingGroup.player,
   );
@@ -362,16 +368,6 @@ class SettingsKeys {
     _SettingBoxKey.playerLogLevel,
     2,
     group: SettingGroup.player,
-  );
-  static const searchNotShowWatchedBangumis = SettingKey<bool>(
-    _SettingBoxKey.searchNotShowWatchedBangumis,
-    false,
-    group: SettingGroup.collect,
-  );
-  static const searchNotShowAbandonedBangumis = SettingKey<bool>(
-    _SettingBoxKey.searchNotShowAbandonedBangumis,
-    false,
-    group: SettingGroup.collect,
   );
   static const timelineNotShowAbandonedBangumis = SettingKey<bool>(
     _SettingBoxKey.timelineNotShowAbandonedBangumis,
@@ -428,6 +424,11 @@ class SettingsKeys {
     true,
     group: SettingGroup.interface,
   );
+  static const showAnimeCounter = SettingKey<bool>(
+    _SettingBoxKey.showAnimeCounter,
+    false,
+    group: SettingGroup.interface,
+  );
   static const downloadParallelEpisodes = SettingKey<int>(
     _SettingBoxKey.downloadParallelEpisodes,
     2,
@@ -441,6 +442,18 @@ class SettingsKeys {
   static const downloadDanmaku = SettingKey<bool>(
     _SettingBoxKey.downloadDanmaku,
     true,
+    group: SettingGroup.download,
+  );
+  static const downloadDirectory = SettingKey<String>(
+    _SettingBoxKey.downloadDirectory,
+    '',
+    group: SettingGroup.download,
+  );
+  // macOS only: security-scoped bookmark that keeps downloadDirectory
+  // writable across app restarts under the sandbox.
+  static const downloadDirectoryBookmark = SettingKey<String>(
+    'downloadDirectoryBookmark',
+    '',
     group: SettingGroup.download,
   );
   static const shortcutDialogShown = SettingKey<bool>(
@@ -493,12 +506,28 @@ class SettingsKeys {
     '',
     group: SettingGroup.misc,
   );
+  static const playerControllerLayerDisappearTime = SettingKey<int>(
+    'playerControllerLayerDisappearTime',
+    4000,
+    group: SettingGroup.player,
+  );
+  static const defaultVolume = SettingKey<double>(
+    'defaultVolume',
+    100.0,
+    group: SettingGroup.player,
+  );
+  static const playerMuted = SettingKey<bool>(
+    'playerMuted',
+    false,
+    group: SettingGroup.player,
+  );
 
   static final List<SettingKey<Object?>> all = [
     hAenable,
     hardwareDecoder,
     searchEnhanceEnable,
     autoUpdate,
+    checkPluginUpdateOnStartup,
     alwaysOntop,
     defaultPlaySpeed,
     defaultShortcutForwardPlaySpeed,
@@ -555,12 +584,10 @@ class SettingsKeys {
     androidEnableOpenSLES,
     androidVideoRenderer,
     androidAutoEnterPIP,
-    defaultSuperResolutionType,
-    superResolutionWarn,
+    defaultSuperResolutionMode,
+    disableSuperResolutionWarning,
     playerDisableAnimations,
     playerLogLevel,
-    searchNotShowWatchedBangumis,
-    searchNotShowAbandonedBangumis,
     timelineNotShowAbandonedBangumis,
     timelineNotShowWatchedBangumis,
     timelineOnlyShowWatchingBangumis,
@@ -572,9 +599,12 @@ class SettingsKeys {
     proxyUrl,
     proxyTestUrl,
     showRating,
+    showAnimeCounter,
     downloadParallelEpisodes,
     downloadParallelSegments,
     downloadDanmaku,
+    downloadDirectory,
+    downloadDirectoryBookmark,
     shortcutDialogShown,
     bangumiSyncEnable,
     bangumiAccessToken,
@@ -585,6 +615,9 @@ class SettingsKeys {
     historySyncSequence,
     historySyncSnapshotInitialized,
     pluginSourceIndexUrl,
+    playerControllerLayerDisappearTime,
+    defaultVolume,
+    playerMuted,
   ];
 
   static List<SettingKey<Object?>> byGroup(SettingGroup group) {
@@ -596,6 +629,7 @@ class SettingsKeys {
 
   SettingsKeys._();
 }
+
 // Historical Hive key names used by settings created before the typed registry.
 // Keep these strings stable so existing users keep their saved settings.
 // New settings do not need to be added here unless they intentionally reuse an
@@ -663,12 +697,10 @@ class _SettingBoxKey {
       androidEnableOpenSLES = 'androidEnableOpenSLES',
       androidVideoRenderer = 'androidVideoRenderer',
       androidAutoEnterPIP = 'androidAutoEnterPIP',
-      defaultSuperResolutionType = 'defaultSuperResolutionType',
-      superResolutionWarn = 'superResolutionWarn',
+      defaultSuperResolutionMode = 'defaultSuperResolutionType',
+      disableSuperResolutionWarning = 'superResolutionWarn',
       playerDisableAnimations = 'playerDisableAnimations',
       playerLogLevel = 'playerLogLevel',
-      searchNotShowWatchedBangumis = 'searchNotShowWatchedBangumis',
-      searchNotShowAbandonedBangumis = 'searchNotShowAbandonedBangumis',
       timelineNotShowAbandonedBangumis = 'timelineNotShowAbandonedBangumis',
       timelineNotShowWatchedBangumis = 'timelineNotShowWatchedBangumis',
       timelineOnlyShowWatchingBangumis = 'timelineOnlyShowWatchingBangumis',
@@ -680,9 +712,11 @@ class _SettingBoxKey {
       proxyUrl = 'proxyUrl',
       proxyTestUrl = 'proxyTestUrl',
       showRating = 'showRating',
+      showAnimeCounter = 'showAnimeCounter',
       downloadParallelEpisodes = 'downloadParallelEpisodes',
       downloadParallelSegments = 'downloadParallelSegments',
       downloadDanmaku = 'downloadDanmaku',
+      downloadDirectory = 'downloadDirectory',
       shortcutDialogShown = 'shortcutDialogShown',
       bangumiSyncEnable = 'bangumiSyncEnable',
       bangumiAccessToken = 'bangumiAccessToken',

@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dio/io.dart';
 import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/services/network/proxy_utils.dart';
+import 'package:kazumi/services/network/public_network_policy.dart';
+import 'package:kazumi/services/network/system_proxy_service.dart';
 import 'package:kazumi/services/storage/storage.dart';
 
 class NetworkConfig {
@@ -26,12 +28,23 @@ class NetworkConfig {
 
   bool get hasProxy => proxyHost != null && proxyPort != null;
 
-  IOHttpClientAdapter createAdapter() {
+  IOHttpClientAdapter createAdapter({bool publicTargetsOnly = false}) {
     return IOHttpClientAdapter(
       createHttpClient: () {
         final client = HttpClient();
+        if (publicTargetsOnly) {
+          client.connectionFactory = (uri, proxyHost, proxyPort) async {
+            if (proxyHost != null && proxyPort != null) {
+              return Socket.startConnect(proxyHost, proxyPort);
+            }
+            final addresses = await PublicNetworkPolicy.resolve(uri);
+            return Socket.startConnect(addresses.first, uri.port);
+          };
+        }
         if (hasProxy) {
           client.findProxy = (_) => 'PROXY $proxyHost:$proxyPort';
+        } else if (Platform.isWindows) {
+          client.findProxy = SystemProxyService.findProxy;
         }
         if (allowBadCertificates) {
           client.badCertificateCallback = (cert, host, port) => true;
