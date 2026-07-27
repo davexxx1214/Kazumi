@@ -3,6 +3,30 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
+const Set<String> _blockedVideoSourceHosts = {
+  'capcutvod.com',
+  'topbuzzcdn.com',
+  'groupvideo.photo.qq.com',
+};
+
+bool isBlockedVideoSource(String source) {
+  final lower = source.trim().toLowerCase();
+  if (lower.contains('googleads') ||
+      lower.contains('googlesyndication') ||
+      lower.contains('adtrafficquality') ||
+      lower.contains('doubleclick')) {
+    return true;
+  }
+
+  final host = Uri.tryParse(source)?.host.toLowerCase();
+  if (host == null || host.isEmpty) {
+    return false;
+  }
+  return _blockedVideoSourceHosts.any(
+    (blockedHost) => host == blockedHost || host.endsWith('.$blockedHost'),
+  );
+}
+
 String decodeVideoSource(String iframeUrl) {
   final decodedUrl = Uri.decodeFull(iframeUrl);
   final regExp = RegExp(

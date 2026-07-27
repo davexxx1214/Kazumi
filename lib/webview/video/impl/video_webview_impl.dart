@@ -38,7 +38,7 @@ class VideoWebviewImpl
           if (useLegacyParser || isVideoSourceLoaded) return null;
           final url = request.url.toString();
           final lower = url.toLowerCase();
-          if (_isAdUrl(lower)) return null;
+          if (isBlockedVideoSource(lower)) return null;
           if (_isM3U8Url(lower) ||
               _isRangeVideoRequest(lower, request.headers)) {
             logEventController.add('Native intercepted video URL: $url');
@@ -114,12 +114,10 @@ class VideoWebviewImpl
             logEventController.add('Callback received: $message');
             logEventController.add(
                 'If there is audio but no video, please report it to the rule developer.');
+            final decodedSource = decodeVideoSource(Uri.encodeFull(message));
             if ((message.contains('http') || message.startsWith('//')) &&
-                !message.contains('googleads') &&
-                !message.contains('googlesyndication.com') &&
-                !message.contains('prestrain.html') &&
-                !message.contains('prestrain%2Ehtml') &&
-                !message.contains('adtrafficquality')) {
+                !isBlockedVideoSource(message) &&
+                !isBlockedVideoSource(decodedSource)) {
               logEventController.add('Parsing video source $message');
               String encodedUrl = Uri.encodeFull(message);
               if (decodeVideoSource(encodedUrl) != encodedUrl) {
@@ -141,6 +139,11 @@ class VideoWebviewImpl
           callback: (args) {
             String message = args[0].toString();
             logEventController.add('Callback received: $message');
+            if (isBlockedVideoSource(message)) {
+              logEventController
+                  .add('Ignored advertising video source: $message');
+              return;
+            }
             if (message.contains('http') && !isVideoSourceLoaded) {
               logEventController.add('Loading video source: $message');
               isIframeLoaded = true;
@@ -158,14 +161,20 @@ class VideoWebviewImpl
       logEventController.add('Injecting blob parser script (onLoadStart)');
       await webviewController?.evaluateJavascript(source: """
         try { window.flutter_inappwebview.callHandler('LogBridge', 'BlobParser script loaded: ' + window.location.href); } catch(e) {}
+        window.__kazumiReportedVideoSources = window.__kazumiReportedVideoSources || new Set();
+        window.__kazumiReportVideoSource = function (src, label) {
+          if (!src || window.__kazumiReportedVideoSources.has(src)) return;
+          window.__kazumiReportedVideoSources.add(src);
+          window.flutter_inappwebview.callHandler('LogBridge', label + src);
+          window.flutter_inappwebview.callHandler('VideoBridgeDebug', src);
+        };
         const _r_text = window.Response.prototype.text;
         window.Response.prototype.text = function () {
             return new Promise((resolve, reject) => {
                 _r_text.call(this).then((text) => {
                     resolve(text);
                     if (text.trim().startsWith("#EXTM3U")) {
-                        window.flutter_inappwebview.callHandler('LogBridge', 'M3U8 source found: ' + this.url);
-                        window.flutter_inappwebview.callHandler('VideoBridgeDebug', this.url);
+                        window.__kazumiReportVideoSource(this.url, 'M3U8 source found: ');
                     }
                 }).catch(reject);
             });
@@ -177,8 +186,7 @@ class VideoWebviewImpl
                 try {
                     let content = this.responseText;
                     if (content.trim().startsWith("#EXTM3U")) {
-                        window.flutter_inappwebview.callHandler('LogBridge', 'M3U8 source found: ' + args[1]);
-                        window.flutter_inappwebview.callHandler('VideoBridgeDebug', args[1]);
+                        window.__kazumiReportVideoSource(args[1], 'M3U8 source found: ');
                     };
                 } catch {}
             });
@@ -196,8 +204,7 @@ class VideoWebviewImpl
                 iframe_r_text.call(this).then((text) => {
                   resolve(text);
                   if (text.trim().startsWith("#EXTM3U")) {
-                    window.flutter_inappwebview.callHandler('LogBridge', 'M3U8 source found in iframe: ' + this.url);
-                    window.flutter_inappwebview.callHandler('VideoBridgeDebug', this.url);
+                    window.__kazumiReportVideoSource(this.url, 'M3U8 source found in iframe: ');
                   }
                 }).catch(reject);
               });
@@ -209,8 +216,7 @@ class VideoWebviewImpl
                 try {
                   let content = this.responseText;
                   if (content.trim().startsWith("#EXTM3U") && args[1] !== null && args[1] !== undefined) {
-                    window.flutter_inappwebview.callHandler('LogBridge', 'M3U8 source found in iframe: ' + args[1]);
-                    window.flutter_inappwebview.callHandler('VideoBridgeDebug', args[1]);
+                    window.__kazumiReportVideoSource(args[1], 'M3U8 source found in iframe: ');
                   };
                 } catch {}
               });
@@ -273,16 +279,16 @@ class VideoWebviewImpl
           window.flutter_inappwebview.callHandler('LogBridge', 'Scanning for video elements...');
           for (const mutation of mutations) {
             if (mutation.type === "attributes" && mutation.target.nodeName === "VIDEO") {
-              if (processVideoElement(mutation.target)) return;
+              processVideoElement(mutation.target);
               continue;
             }
             for (const node of mutation.addedNodes) {
               if (node.nodeName === "VIDEO") {
-                if (processVideoElement(node)) return;
+                processVideoElement(node);
               }
               if (node.querySelectorAll) {
                 for (const video of node.querySelectorAll("video")) {
-                  if (processVideoElement(video)) return;
+                  processVideoElement(video);
                 }
               }
             }
@@ -291,27 +297,21 @@ class VideoWebviewImpl
         function processVideoElement(video) {
           window.flutter_inappwebview.callHandler('LogBridge', 'Scanning video element for source URL');
           let src = video.getAttribute('src');
-          if (src && src.trim() !== '' && !src.startsWith('blob:') && !src.includes('googleads')) {
-            _observer.disconnect();
-            window.flutter_inappwebview.callHandler('LogBridge', 'VIDEO source found: ' + src);
-            window.flutter_inappwebview.callHandler('VideoBridgeDebug', src);
-            return true;
+          if (src && src.trim() !== '' && !src.startsWith('blob:')) {
+            window.__kazumiReportVideoSource(src, 'VIDEO source found: ');
           }
           const sources = video.getElementsByTagName('source');
           for (let source of sources) {
             src = source.getAttribute('src');
-            if (src && src.trim() !== '' && !src.startsWith('blob:') && !src.includes('googleads')) {
-              _observer.disconnect();
-              window.flutter_inappwebview.callHandler('LogBridge', 'VIDEO source found (source tag): ' + src);
-              window.flutter_inappwebview.callHandler('VideoBridgeDebug', src);
-              return true;
+            if (src && src.trim() !== '' && !src.startsWith('blob:')) {
+              window.__kazumiReportVideoSource(src, 'VIDEO source found (source tag): ');
             }
           }
         }
 
         function setupVideoProcessing() {
           for (const video of document.querySelectorAll("video")) {
-            if (processVideoElement(video)) return;
+            processVideoElement(video);
           }
           _observer.observe(document.body, {
             childList: true,
@@ -403,18 +403,14 @@ class VideoWebviewImpl
           window.flutter_inappwebview.callHandler('LogBridge', 'Timer scan: found ' + videos.length + ' video element(s)');
           for (var i = 0; i < videos.length; i++) {
             var src = videos[i].getAttribute('src');
-            if (src && src.trim() !== '' && !src.startsWith('blob:') && !src.includes('googleads')) {
-              window.flutter_inappwebview.callHandler('LogBridge', 'VIDEO source found: ' + src);
-              window.flutter_inappwebview.callHandler('VideoBridgeDebug', src);
-              return;
+            if (src && src.trim() !== '' && !src.startsWith('blob:')) {
+              window.__kazumiReportVideoSource(src, 'VIDEO source found: ');
             }
             var sources = videos[i].getElementsByTagName('source');
             for (var j = 0; j < sources.length; j++) {
               src = sources[j].getAttribute('src');
-              if (src && src.trim() !== '' && !src.startsWith('blob:') && !src.includes('googleads')) {
-                window.flutter_inappwebview.callHandler('LogBridge', 'VIDEO source found (source tag): ' + src);
-                window.flutter_inappwebview.callHandler('VideoBridgeDebug', src);
-                return;
+              if (src && src.trim() !== '' && !src.startsWith('blob:')) {
+                window.__kazumiReportVideoSource(src, 'VIDEO source found (source tag): ');
               }
             }
           }
@@ -465,13 +461,6 @@ class VideoWebviewImpl
       return false;
     }
     return true;
-  }
-
-  bool _isAdUrl(String lower) {
-    return lower.contains('googleads') ||
-        lower.contains('googlesyndication') ||
-        lower.contains('adtrafficquality') ||
-        lower.contains('doubleclick');
   }
 
   Future<void> _setupProxy() async {
