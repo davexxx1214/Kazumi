@@ -7,6 +7,11 @@ import 'package:kazumi/utils/constants.dart';
 
 typedef PlayerShortcutAction = FutureOr<void> Function();
 
+const Map<String, List<String>> _tvRemoteShortcuts = {
+  'playorpause': ['Select', 'Enter', 'Game Button A'],
+  'showepisodes': ['Context Menu', 'F10', 'Menu'],
+};
+
 class PlayerLongPressShortcutActions {
   const PlayerLongPressShortcutActions({
     required this.onRepeat,
@@ -155,6 +160,13 @@ class _PlayerKeyboardShortcutsState extends State<PlayerKeyboardShortcuts> {
   }
 
   String? _findActionName(String keyLabel) {
+    if (isTV) {
+      for (final entry in _tvRemoteShortcuts.entries) {
+        if (entry.value.contains(keyLabel)) {
+          return entry.key;
+        }
+      }
+    }
     for (final entry in _shortcuts.entries) {
       if (entry.value.contains(keyLabel)) {
         return entry.key;

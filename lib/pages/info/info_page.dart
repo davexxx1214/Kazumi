@@ -44,7 +44,7 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
     '概览',
     '吐槽',
     '角色',
-    '评论',
+    '关联',
     '制作人员',
   ];
   static const int _commentsTabIndex = 1;
@@ -139,6 +139,15 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> loadRelations() async {
+    try {
+      await infoController
+          .queryBangumiRelationsByID(infoController.bangumiItem.id);
+    } catch (e) {
+      KazumiLogger().e('InfoPage: failed to load relations', error: e);
+    }
+  }
+
   Future<void> loadMoreComments({bool loadMore = false}) async {
     if (commentsIsLoading) return;
     setState(() {
@@ -206,6 +215,7 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
     infoController.characterList.clear();
     infoController.clearComments();
     infoController.staffList.clear();
+    infoController.clearRelations();
     infoController.pluginSearchResponseList.clear();
     // Search results can miss rating distribution or summaries, so fill those
     // fields without replacing image URLs that are already rendered.
@@ -247,6 +257,9 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
         !charactersIsEmpty &&
         !charactersQueryTimeout) {
       loadCharacters();
+    }
+    if (index == 3 && infoController.canLoadRelations) {
+      loadRelations();
     }
     if (index == 4 &&
         infoController.staffList.isEmpty &&
@@ -302,6 +315,7 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
     infoController.characterList.clear();
     infoController.clearComments();
     infoController.staffList.clear();
+    infoController.clearRelations();
     infoController.pluginSearchResponseList.clear();
     sourceTabController.dispose();
     infoTabController.dispose();
@@ -493,6 +507,11 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                 onCommentsTabSelected: onCommentsTabSelected,
                 characterList: infoController.characterList,
                 staffList: infoController.staffList,
+                relationList: infoController.relationList,
+                relationsIsLoading: infoController.relationsIsLoading,
+                relationsQueryTimeout: infoController.relationsQueryTimeout,
+                relationsHasLoaded: infoController.relationsHasLoaded,
+                loadRelations: loadRelations,
                 isLoading: showBangumiInfoSkeleton,
               );
             }),

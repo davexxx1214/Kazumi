@@ -334,6 +334,11 @@ class SettingsKeys {
     defaultSyncPlayEndPoint,
     group: SettingGroup.player,
   );
+  static const syncPlayUserName = SettingKey<String>(
+    'syncPlayUserName',
+    '',
+    group: SettingGroup.player,
+  );
   static const androidEnableOpenSLES = SettingKey<bool>(
     _SettingBoxKey.androidEnableOpenSLES,
     true,
@@ -581,6 +586,7 @@ class SettingsKeys {
     exitBehavior,
     playerDebugMode,
     syncPlayEndPoint,
+    syncPlayUserName,
     androidEnableOpenSLES,
     androidVideoRenderer,
     androidAutoEnterPIP,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:kazumi/bean/widget/scrollable_wrapper.dart';
 
 const double materialBottomSheetRadius = 24;
 const EdgeInsets materialBottomSheetContentPadding =
@@ -102,38 +101,12 @@ class MaterialBottomSheetTabBar extends StatefulWidget {
 }
 
 class _MaterialBottomSheetTabBarState extends State<MaterialBottomSheetTabBar> {
-  TabBarScrollController? _scrollController;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.isScrollable) {
-      _scrollController = TabBarScrollController();
-    }
-  }
-
-  @override
-  void didUpdateWidget(MaterialBottomSheetTabBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isScrollable != oldWidget.isScrollable) {
-      _scrollController?.dispose();
-      _scrollController = widget.isScrollable ? TabBarScrollController() : null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _scrollController?.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    Widget tabBar = TabBar(
+    final tabBar = TabBar(
       controller: widget.controller,
       isScrollable: widget.isScrollable,
-      scrollController: _scrollController,
       tabAlignment: widget.tabAlignment,
       dividerColor: Colors.transparent,
       indicatorSize: TabBarIndicatorSize.tab,
@@ -146,12 +119,6 @@ class _MaterialBottomSheetTabBarState extends State<MaterialBottomSheetTabBar> {
       unselectedLabelColor: colorScheme.onSurfaceVariant,
       tabs: widget.tabs,
     );
-    if (_scrollController != null) {
-      tabBar = ScrollableWrapper(
-        scrollController: _scrollController!,
-        child: tabBar,
-      );
-    }
 
     return Container(
       height: 48,
