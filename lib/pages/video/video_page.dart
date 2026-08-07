@@ -316,8 +316,8 @@ class _VideoPageState extends State<VideoPage>
       }
       await observerController.jumpTo(
           index: videoPageController.selectedEpisode.episode > 1
-          ? videoPageController.selectedEpisode.episode - 1
-          : videoPageController.selectedEpisode.episode);
+              ? videoPageController.selectedEpisode.episode - 1
+              : videoPageController.selectedEpisode.episode);
     });
   }
 
@@ -755,7 +755,9 @@ class _VideoPageState extends State<VideoPage>
                 return KeyEventResult.handled;
               }
 
-              if (key == LogicalKeyboardKey.menu) {
+              if (key == LogicalKeyboardKey.contextMenu ||
+                  key == LogicalKeyboardKey.f10 ||
+                  key.keyLabel == 'Menu') {
                 if (_isSideEpisodeMenuOpen) {
                   _closeTabBodyAnimated();
                 } else {

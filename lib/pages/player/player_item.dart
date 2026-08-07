@@ -230,7 +230,7 @@ class _PlayerItemState extends State<PlayerItem>
   }
 
   void _initKeyboardActions() {
-    final showControlOnInput = () => showVideoController();
+    void showControlOnInput() => showVideoController();
 
     keyboardActions = {
       'playorpause': () {
