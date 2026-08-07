@@ -230,13 +230,30 @@ class _PlayerItemState extends State<PlayerItem>
   }
 
   void _initKeyboardActions() {
+    final showControlOnInput = () => showVideoController();
+
     keyboardActions = {
-      'playorpause': () => playerController.playOrPause(),
+      'playorpause': () {
+        showControlOnInput();
+        playerController.playOrPause();
+      },
       'showepisodes': widget.toggleMenu,
-      'forward': handleShortcutForwardDown,
-      'rewind': handleShortcutRewind,
-      'next': () => handlePreNextEpisode('next'),
-      'prev': () => handlePreNextEpisode('prev'),
+      'forward': () {
+        showControlOnInput();
+        handleShortcutForwardDown();
+      },
+      'rewind': () {
+        showControlOnInput();
+        handleShortcutRewind();
+      },
+      'next': () {
+        showControlOnInput();
+        handlePreNextEpisode('next');
+      },
+      'prev': () {
+        showControlOnInput();
+        handlePreNextEpisode('prev');
+      },
       'volumeup': () => handleShortcutVolumeChange('up'),
       'volumedown': () => handleShortcutVolumeChange('down'),
       'togglemute': () => handleShortcutVolumeChange('mute'),
@@ -253,8 +270,14 @@ class _PlayerItemState extends State<PlayerItem>
     };
     keyboardLongPressActions = {
       'forward': PlayerLongPressShortcutActions(
-        onRepeat: handleShortcutForwardRepeat,
-        onRelease: handleShortcutForwardUp,
+        onRepeat: () {
+          showControlOnInput();
+          handleShortcutForwardRepeat();
+        },
+        onRelease: () {
+          showControlOnInput();
+          handleShortcutForwardUp();
+        },
       ),
     };
   }
