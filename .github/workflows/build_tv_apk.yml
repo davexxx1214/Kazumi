@@ -1,4 +1,4 @@
-name: Build TV APK (v7a)
+name: Build TV APK (arm64)
 on:
   workflow_dispatch: # 允许手动触发构建
   push:              # Push 时自动触发
@@ -58,7 +58,7 @@ jobs:
           KAZUMI_APPID: ${{ secrets.KAZUMI_APPID }}
           KAZUMI_KEY: ${{ secrets.KAZUMI_KEY }}
         run: >-
-          flutter build apk --release --target-platform android-arm
+          flutter build apk --release --target-platform android-arm64
           --dart-define=IS_TV=true
           --dart-define=DANDANAPI_APPID=$DANDANAPI_APPID
           --dart-define=DANDANAPI_KEY=$DANDANAPI_KEY
@@ -68,6 +68,6 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Kazumi-TV-v7a
+          name: Kazumi-TV-arm64
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30  # 保留30天（可设置1-90天，节省空间）
