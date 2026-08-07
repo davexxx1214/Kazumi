@@ -64,6 +64,9 @@ class _VideoPageState extends State<VideoPage>
   StreamSubscription<String>? _logSubscription;
   final FocusNode keyboardFocus =
       FocusNode(debugLabel: 'Video player shortcut scope');
+  final FocusScopeNode _sideMenuFocusScope =
+      FocusScopeNode(debugLabel: 'Video side episode menu focus scope');
+  final Map<String, FocusNode> _sideMenuEpisodeFocusNodes = {};
 
   ScrollController scrollController = ScrollController();
   late GridObserverController observerController;
@@ -82,6 +85,7 @@ class _VideoPageState extends State<VideoPage>
 
   static const Duration _offlinePlayerInitDelay = Duration(milliseconds: 400);
   static const Duration _sideTabAnimationDuration = Duration(milliseconds: 120);
+  static const String _episodeMenuFocusKeySeparator = '_';
 
   @override
   void initState() {
@@ -246,6 +250,11 @@ class _VideoPageState extends State<VideoPage>
       } catch (_) {}
     }
     DisplayModeService.unlockScreenRotation();
+    for (final focusNode in _sideMenuEpisodeFocusNodes.values) {
+      focusNode.dispose();
+    }
+    _sideMenuEpisodeFocusNodes.clear();
+    _sideMenuFocusScope.dispose();
     keyboardFocus.dispose();
     tabController.dispose();
     TimedShutdownService().cancel();
@@ -307,8 +316,75 @@ class _VideoPageState extends State<VideoPage>
       }
       await observerController.jumpTo(
           index: videoPageController.selectedEpisode.episode > 1
-              ? videoPageController.selectedEpisode.episode - 1
-              : videoPageController.selectedEpisode.episode);
+          ? videoPageController.selectedEpisode.episode - 1
+          : videoPageController.selectedEpisode.episode);
+    });
+  }
+
+  bool get _isSideEpisodeMenuOpen =>
+      _tabBodyTargetVisible || videoPageController.showTabBody;
+
+  String _episodeMenuFocusKey(int road, int episode) {
+    return '$road$_episodeMenuFocusKeySeparator$episode';
+  }
+
+  void _cleanupSideMenuEpisodeFocusNodes(int road) {
+    if (road < 0 || road >= videoPageController.roadList.length) {
+      return;
+    }
+    final roadData = videoPageController.roadList[road];
+    final expectedKeys = <String>{
+      for (var i = 1; i <= roadData.data.length; i++)
+        _episodeMenuFocusKey(road, i),
+    };
+    final keysToDrop = <String>[];
+    for (final entry in _sideMenuEpisodeFocusNodes.entries) {
+      if (entry.key.startsWith('$road$_episodeMenuFocusKeySeparator') &&
+          !expectedKeys.contains(entry.key)) {
+        keysToDrop.add(entry.key);
+      }
+    }
+    for (final key in keysToDrop) {
+      _sideMenuEpisodeFocusNodes.remove(key)?.dispose();
+    }
+  }
+
+  FocusNode _getEpisodeMenuFocusNode(int road, int episode) {
+    final key = _episodeMenuFocusKey(road, episode);
+    return _sideMenuEpisodeFocusNodes.putIfAbsent(
+      key,
+      () => FocusNode(debugLabel: 'Episode $key menu card'),
+    );
+  }
+
+  void _focusCurrentEpisodeMenuCard() {
+    if (!isTV || !_isSideEpisodeMenuOpen) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_isSideEpisodeMenuOpen || !_isSideTabLayout) {
+        return;
+      }
+
+      final int targetRoad = visibleRoad;
+      if (videoPageController.roadList.isEmpty ||
+          targetRoad < 0 ||
+          targetRoad >= videoPageController.roadList.length) {
+        return;
+      }
+      final roadData = videoPageController.roadList[targetRoad];
+
+      int targetEpisode = 1;
+      if (videoPageController.selectedEpisode.road == targetRoad &&
+          videoPageController.selectedEpisode.episode >= 1) {
+        targetEpisode = videoPageController.selectedEpisode.episode.clamp(
+          1,
+          roadData.data.isEmpty ? 1 : roadData.data.length,
+        );
+      }
+      final focusNode = _getEpisodeMenuFocusNode(targetRoad, targetEpisode);
+      focusNode.requestFocus();
     });
   }
 
@@ -321,6 +397,7 @@ class _VideoPageState extends State<VideoPage>
   void _openTabBodyAnimated() {
     _setTabBodyVisible(true, animated: true);
     menuJumpToCurrentEpisode();
+    _focusCurrentEpisodeMenuCard();
   }
 
   void _closeTabBodyAnimated() {
@@ -341,6 +418,7 @@ class _VideoPageState extends State<VideoPage>
     if (locateEpisode) {
       menuJumpToCurrentEpisode();
     }
+    _focusCurrentEpisodeMenuCard();
   }
 
   void _hideTabBodyImmediately() {
@@ -407,6 +485,10 @@ class _VideoPageState extends State<VideoPage>
   void onBackPressed(BuildContext context) async {
     if (KazumiDialog.observer.hasKazumiDialog) {
       KazumiDialog.dismiss();
+      return;
+    }
+    if (_isSideEpisodeMenuOpen && isTV) {
+      _closeTabBodyAnimated();
       return;
     }
     if (videoPageController.isPip && isDesktop()) {
@@ -657,16 +739,45 @@ class _VideoPageState extends State<VideoPage>
               : MediaQuery.sizeOf(context).width / 3),
       child: Container(
         color: Theme.of(context).canvasColor,
-        child: GridViewObserver(
-          controller: observerController,
-          child: (isDesktop() || isTablet())
-              ? tabBody
-              : Column(
-                  children: [
-                    menuBar,
-                    menuBody,
-                  ],
-                ),
+        child: FocusScope(
+          node: _sideMenuFocusScope,
+          child: Focus(
+            onKeyEvent: (node, event) {
+              if (event is! KeyDownEvent) {
+                return KeyEventResult.ignored;
+              }
+
+              final key = event.logicalKey;
+              if (key == LogicalKeyboardKey.goBack ||
+                  key == LogicalKeyboardKey.escape ||
+                  key == LogicalKeyboardKey.browserBack) {
+                _closeTabBodyAnimated();
+                return KeyEventResult.handled;
+              }
+
+              if (key == LogicalKeyboardKey.menu) {
+                if (_isSideEpisodeMenuOpen) {
+                  _closeTabBodyAnimated();
+                } else {
+                  _openTabBodyAnimated();
+                }
+                return KeyEventResult.handled;
+              }
+
+              return KeyEventResult.ignored;
+            },
+            child: GridViewObserver(
+              controller: observerController,
+              child: (isDesktop() || isTablet())
+                  ? tabBody
+                  : Column(
+                      children: [
+                        menuBar,
+                        menuBody,
+                      ],
+                    ),
+            ),
+          ),
         ),
       ),
     );
@@ -904,6 +1015,9 @@ class _VideoPageState extends State<VideoPage>
                   setState(() {
                     visibleRoad = i;
                   });
+                  if (isTV) {
+                    _focusCurrentEpisodeMenuCard();
+                  }
                 },
                 child: Container(
                   height: 48,
@@ -986,6 +1100,7 @@ class _VideoPageState extends State<VideoPage>
   Widget get menuBody {
     return Observer(
       builder: (context) {
+        _cleanupSideMenuEpisodeFocusNodes(visibleRoad);
         var cardList = <Widget>[];
         if (visibleRoad >= 0 &&
             visibleRoad < videoPageController.roadList.length) {
@@ -1069,7 +1184,8 @@ class _VideoPageState extends State<VideoPage>
             if (isTV) {
               final baseCard = card;
               card = Focus(
-                autofocus: isCurrent,
+                focusNode: _getEpisodeMenuFocusNode(visibleRoad, count0),
+                autofocus: false,
                 onKeyEvent: (node, event) {
                   if (event is KeyDownEvent &&
                       (event.logicalKey == LogicalKeyboardKey.select ||
