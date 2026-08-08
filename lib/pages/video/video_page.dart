@@ -491,6 +491,22 @@ class _VideoPageState extends State<VideoPage>
       _closeTabBodyAnimated();
       return;
     }
+    if (isTV) {
+      if (_isClosing) {
+        return;
+      }
+      _isClosing = true;
+      playerController.beginShutdown();
+      if (videoPageController.isFullscreen) {
+        videoPageController.isFullscreen = false;
+        await DisplayModeService.exitFullScreen(lockOrientation: false);
+      }
+      if (!context.mounted) {
+        return;
+      }
+      context.pop();
+      return;
+    }
     if (videoPageController.isPip && isDesktop()) {
       PipUtils.exitDesktopPIPWindow();
       videoPageController.isPip = false;
