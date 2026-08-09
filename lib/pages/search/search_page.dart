@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/bean/dialog/adaptive_bottom_sheet.dart';
@@ -29,6 +32,7 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final SearchController searchController = SearchController();
+  late final FocusNode _searchFocusNode;
 
   SearchPageController get searchPageController => widget.controller;
   final ScrollController scrollController = ScrollController();
@@ -39,6 +43,10 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
+    _searchFocusNode = FocusNode(
+      debugLabel: 'TV search input',
+      onKeyEvent: _handleTVSearchKeyEvent,
+    );
     scrollController.addListener(scrollListener);
     searchController.addListener(_syncFilterFromSearchText);
     searchPageController.loadSearchHistories();
@@ -59,6 +67,7 @@ class _SearchPageState extends State<SearchPage> {
     searchPageController.bangumiList.clear();
     searchController.removeListener(_syncFilterFromSearchText);
     searchController.dispose();
+    _searchFocusNode.dispose();
     scrollController.removeListener(scrollListener);
     scrollController.dispose();
     super.dispose();
@@ -226,6 +235,30 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  KeyEventResult _handleTVSearchKeyEvent(FocusNode node, KeyEvent event) {
+    if (!isTV || event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      return node.focusInDirection(TraversalDirection.down)
+          ? KeyEventResult.handled
+          : KeyEventResult.ignored;
+    }
+
+    final isConfirmKey = event.logicalKey == LogicalKeyboardKey.select ||
+        event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.gameButtonA;
+    if (isConfirmKey &&
+        (searchController.text.trim().isNotEmpty ||
+            filterState.hasAdvancedFilters)) {
+      unawaited(_submitSearch(searchController.text));
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -242,13 +275,10 @@ class _SearchPageState extends State<SearchPage> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-            child: FocusScope(
-              descendantsAreFocusable: false,
-              child: SearchAnchor.bar(
+            child: ExcludeFocus(
+              excluding: !isTV,
+              child: SearchAnchor(
                 searchController: searchController,
-                barElevation: WidgetStateProperty<double>.fromMap(
-                  <WidgetStatesConstraint, double>{WidgetState.any: 0},
-                ),
                 viewElevation: 0,
                 viewLeading: IconButton(
                   onPressed: () {
@@ -256,23 +286,55 @@ class _SearchPageState extends State<SearchPage> {
                   },
                   icon: const Icon(Icons.arrow_back),
                 ),
-                barTrailing: [
-                  IconButton(
-                    tooltip: '图片搜索',
-                    onPressed: () async {
-                      final result = await context.pushNamed('/search/image');
-                      if (result is String && result.isNotEmpty) {
-                        await _applyFilterState(
-                          SearchParser(result).toFilterState(),
-                          search: true,
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.image_search_rounded),
-                  ),
-                ],
                 isFullScreen: MediaQuery.sizeOf(context).width <
                     LayoutBreakpoint.compact['width']!,
+                viewOnSubmitted: _submitSearch,
+                textInputAction: TextInputAction.search,
+                builder: (context, controller) => SearchBar(
+                  controller: controller,
+                  focusNode: _searchFocusNode,
+                  autoFocus: isTV,
+                  elevation: WidgetStateProperty<double>.fromMap(
+                    <WidgetStatesConstraint, double>{WidgetState.any: 0},
+                  ),
+                  side: isTV
+                      ? WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.focused)) {
+                            return BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            );
+                          }
+                          return BorderSide.none;
+                        })
+                      : null,
+                  leading: const Icon(Icons.search),
+                  trailing: [
+                    if (isTV)
+                      IconButton(
+                        tooltip: '搜索',
+                        onPressed: () => _submitSearch(controller.text),
+                        icon: const Icon(Icons.search_rounded),
+                      ),
+                    IconButton(
+                      tooltip: '图片搜索',
+                      onPressed: () async {
+                        final result = await context.pushNamed('/search/image');
+                        if (result is String && result.isNotEmpty) {
+                          await _applyFilterState(
+                            SearchParser(result).toFilterState(),
+                            search: true,
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.image_search_rounded),
+                    ),
+                  ],
+                  onTap: controller.openView,
+                  onChanged: (_) => controller.openView(),
+                  onSubmitted: _submitSearch,
+                  textInputAction: TextInputAction.search,
+                ),
                 suggestionsBuilder: (context, controller) => [
                   Observer(
                     builder: (context) {
@@ -310,7 +372,6 @@ class _SearchPageState extends State<SearchPage> {
                     },
                   ),
                 ],
-                onSubmitted: _submitSearch,
               ),
             ),
           ),
