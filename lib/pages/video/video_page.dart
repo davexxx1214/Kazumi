@@ -425,6 +425,24 @@ class _VideoPageState extends State<VideoPage>
     _setTabBodyVisible(false, animated: false);
   }
 
+  bool _isTVMenuKey(LogicalKeyboardKey key) {
+    return key == LogicalKeyboardKey.contextMenu ||
+        key == LogicalKeyboardKey.f10 ||
+        key.keyLabel == 'Menu';
+  }
+
+  KeyEventResult _handlePlayerErrorKeyEvent(FocusNode node, KeyEvent event) {
+    if (!isTV ||
+        videoPageController.errorMessage == null ||
+        event is! KeyDownEvent ||
+        !_isTVMenuKey(event.logicalKey)) {
+      return KeyEventResult.ignored;
+    }
+
+    _toggleTabBodyAnimated();
+    return KeyEventResult.handled;
+  }
+
   void _setTabBodyVisible(bool visible, {required bool animated}) {
     _tabBodyTargetVisible = visible;
     final int animationRun = ++_tabBodyAnimationRun;
@@ -715,6 +733,7 @@ class _VideoPageState extends State<VideoPage>
                             child: Focus(
                               focusNode: keyboardFocus,
                               autofocus: true,
+                              onKeyEvent: _handlePlayerErrorKeyEvent,
                               child: playerBody,
                             ),
                           ),
@@ -771,9 +790,7 @@ class _VideoPageState extends State<VideoPage>
                 return KeyEventResult.handled;
               }
 
-              if (key == LogicalKeyboardKey.contextMenu ||
-                  key == LogicalKeyboardKey.f10 ||
-                  key.keyLabel == 'Menu') {
+              if (_isTVMenuKey(key)) {
                 if (_isSideEpisodeMenuOpen) {
                   _closeTabBodyAnimated();
                 } else {
