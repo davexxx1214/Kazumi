@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:kazumi/request/config/api_endpoints.dart';
 
 /// 是否为 TV 版本（通过 --dart-define=IS_TV=true 构建时传入）
@@ -16,27 +17,35 @@ const String customAppFontFamily = "MI_Sans_Regular";
 
 /// Opts into the newer Material progress indicator appearance while Flutter
 /// still exposes the compatibility flag.
-/// ignore: deprecated_member_use
 const ProgressIndicatorThemeData progressIndicatorTheme2024 =
+    // ignore: deprecated_member_use
     ProgressIndicatorThemeData(year2023: false);
 
 /// Opts into the newer Material slider appearance while Flutter still exposes
 /// the compatibility flag.
-/// ignore: deprecated_member_use
 const SliderThemeData sliderTheme2024 = SliderThemeData(
+  // ignore: deprecated_member_use
   year2023: false,
   showValueIndicator: ShowValueIndicator.onDrag,
 );
 
-/// Flutter-managed platform transitions. Route-level Modular transitions should
-/// avoid overriding these unless the native page transition is intentionally bypassed.
-const PageTransitionsTheme pageTransitionsTheme2024 = PageTransitionsTheme(
+const _pageTransitionBuilders = <TargetPlatform, PageTransitionsBuilder>{
+  TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+  TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+  TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+  TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+};
+
+const PageTransitionsTheme pageTransitionsTheme2024 =
+    PageTransitionsTheme(builders: _pageTransitionBuilders);
+
+// Applied only to the settings navigator; fullscreen routes use the app theme.
+final PageTransitionsTheme settingsPageTransitionsTheme = PageTransitionsTheme(
   builders: {
-    TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-    TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
-    TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-    TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+    ..._pageTransitionBuilders,
+    TargetPlatform.linux: const FadeForwardsPageTransitionsBuilder(),
+    TargetPlatform.windows: const FadeForwardsPageTransitionsBuilder(),
   },
 );
 

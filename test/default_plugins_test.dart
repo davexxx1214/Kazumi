@@ -22,11 +22,11 @@ void main() {
       pluginNames,
       unorderedEquals([
         'AGE',
+        '7sefun',
         'DM84',
         'LMM',
         'MXdm',
         'baimao',
-        'enlie',
         'giriGiriLove',
         'gpjda',
         'gugu3',

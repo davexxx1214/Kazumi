@@ -1,12 +1,3 @@
-# This file configures the analyzer, which statically analyzes Dart code to
-# check for errors, warnings, and lints.
-#
-# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
-# IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
-# invoked from the command line by running `flutter analyze`.
-
-# The following line activates a set of recommended lints for Flutter apps,
-# packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
@@ -18,6 +9,12 @@ analyzer:
     - lib/bbcode/generated/**
     - "**/*.g.dart"
     - "**/*.freezed.dart"
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
   errors:
     avoid_function_literals_in_foreach_calls: ignore
     avoid_print: ignore
@@ -30,6 +27,8 @@ analyzer:
     non_constant_identifier_names: ignore
     prefer_null_aware_operators: ignore
     strict_top_level_inference: ignore
+    unnecessary_underscores: ignore
+    use_null_aware_elements: ignore
 
 linter:
   # The lint rules applied to this project can be customized in the

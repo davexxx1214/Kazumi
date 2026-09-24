@@ -1,42 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Rounded tonal card for a rule entry, shared by the rule manage page,
-/// the rule shop page and the onboarding rule step.
 class RuleCard extends StatelessWidget {
   const RuleCard({
     super.key,
     required this.title,
     this.tags = const [],
     this.caption,
+    this.subtitle,
     this.trailing,
     this.onTap,
     this.onLongPress,
     this.selected = false,
+    this.installed = false,
     this.focusNode,
     this.trailingFocusNode,
   });
 
   final String title;
   final List<Widget> tags;
-
-  /// Plain text shown after [tags], e.g. the last update date.
   final String? caption;
+  final String? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final bool selected;
+  final bool installed;
   final FocusNode? focusNode;
   final FocusNode? trailingFocusNode;
 
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+  KeyEventResult _handleRowKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowRight &&
         focusNode?.hasPrimaryFocus == true) {
       trailingFocusNode?.requestFocus();
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _handleTrailingKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowLeft &&
         trailingFocusNode?.hasPrimaryFocus == true) {
       focusNode?.requestFocus();
       return KeyEventResult.handled;
@@ -46,80 +51,147 @@ class RuleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final card = Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 8),
-      color: selected
-          ? colorScheme.primaryContainer
-          : colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        focusNode: focusNode,
-        focusColor: colorScheme.primaryContainer,
-        onTap: onTap,
-        onLongPress: onLongPress,
+    final colors = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    // Keep menu focus from activating the enclosing InkWell's highlight.
+    final actions = trailing == null
+        ? null
+        : Focus(
+            parentNode: Focus.maybeOf(context, scopeOk: true),
+            canRequestFocus: false,
+            skipTraversal: true,
+            onKeyEvent: trailingFocusNode == null
+                ? null
+                : _handleTrailingKeyEvent,
+            child: trailing!,
+          );
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
+    final card = Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Semantics(
         selected: selected,
-        title: Text(title, style: textTheme.titleMedium),
-        subtitle: tags.isEmpty && caption == null
-            ? null
-            : Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    ...tags,
-                    if (caption != null)
-                      Text(
-                        caption!,
-                        style: textTheme.bodySmall
-                            ?.copyWith(color: colorScheme.onSurfaceVariant),
+        child: AnimatedContainer(
+          duration: duration,
+          curve: Curves.easeInOutCubicEmphasized,
+          decoration: BoxDecoration(
+            color: selected
+                ? colors.secondaryContainer
+                : colors.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(selected ? 20 : 28),
+            border: Border.all(
+              color: selected ? colors.secondary : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            borderRadius: BorderRadius.circular(selected ? 18 : 26),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              focusNode: focusNode,
+              focusColor: colors.primaryContainer,
+              onTap: onTap,
+              onLongPress: onLongPress,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: LayoutBuilder(builder: (context, constraints) {
+                  final stacked = constraints.maxWidth < 300 ||
+                      MediaQuery.textScalerOf(context).scale(14) > 20;
+                  final identity = Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AnimatedContainer(
+                        duration: duration,
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: selected || installed
+                              ? colors.secondaryContainer
+                              : colors.primaryContainer,
+                          borderRadius:
+                              BorderRadius.circular(installed ? 24 : 16),
+                        ),
+                        child: Icon(
+                          selected
+                              ? Icons.check_rounded
+                              : Icons.extension_rounded,
+                          color: selected || installed
+                              ? colors.onSecondaryContainer
+                              : colors.onPrimaryContainer,
+                        ),
                       ),
-                  ],
-                ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(title,
+                                style: text.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis),
+                            if (subtitle != null && subtitle!.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(subtitle!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: text.bodySmall?.copyWith(
+                                      color: colors.onSurfaceVariant)),
+                            ],
+                            if (tags.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Wrap(spacing: 6, runSpacing: 6, children: tags),
+                            ],
+                            if (caption != null) ...[
+                              const SizedBox(height: 6),
+                              Text(caption!,
+                                  style: text.bodySmall?.copyWith(
+                                      color: colors.onSurfaceVariant)),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                  if (stacked) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        identity,
+                        if (actions != null) ...[
+                          const SizedBox(height: 8),
+                          Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: actions),
+                        ],
+                      ],
+                    );
+                  }
+                  return Row(children: [
+                    Expanded(child: identity),
+                    if (actions != null) ...[
+                      const SizedBox(width: 12),
+                      actions
+                    ],
+                  ]);
+                }),
               ),
-        trailing: trailing,
+            ),
+          ),
+        ),
       ),
     );
     if (focusNode == null || trailingFocusNode == null) return card;
     return Focus(
       canRequestFocus: false,
-      onKeyEvent: _handleKeyEvent,
+      onKeyEvent: _handleRowKeyEvent,
       child: card,
     );
   }
 }
 
-/// Fixed-width tonal action button for [RuleCard] trailing slots, so the
-/// button edge stays aligned across rows regardless of label length
-/// (e.g. 安装 / 更新 / 已安装). Pass null [onPressed] for the disabled state.
-class RuleCardActionButton extends StatelessWidget {
-  const RuleCardActionButton({
-    super.key,
-    required this.label,
-    this.onPressed,
-  });
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 96,
-      child: FilledButton.tonal(
-        onPressed: onPressed,
-        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      ),
-    );
-  }
-}
-
-/// Small tonal label used inside [RuleCard], e.g. version or captcha tags.
 class RuleTag extends StatelessWidget {
   const RuleTag({
     super.key,
@@ -133,18 +205,16 @@ class RuleTag extends StatelessWidget {
   final Color foreground;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        label,
-        style:
-            Theme.of(context).textTheme.labelSmall?.copyWith(color: foreground),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(label,
+            style: Theme.of(context)
+                .textTheme
+                .labelSmall
+                ?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+      );
 }

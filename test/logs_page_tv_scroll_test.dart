@@ -104,7 +104,7 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
-      expect(find.text('暂无日志'), findsOneWidget);
+      expect(find.text('还没有日志记录'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 30)),
     skip: !isTV,

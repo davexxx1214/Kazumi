@@ -3,12 +3,15 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+
 import 'package:kazumi/bean/appbar/sys_app_bar.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/bean/widget/empty_state_widget.dart';
 import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/utils/constants.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:kazumi/bean/widget/error_widget.dart';
+import 'package:kazumi/bean/widget/loading_indicator.dart';
 
 abstract interface class LogsRepository {
   Future<String?> read();
@@ -185,6 +188,10 @@ class _LogsPageState extends State<LogsPage> {
 
   Future<void> _loadLogs() async {
     if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
 
     try {
       final content = await widget.repository.read();
@@ -198,7 +205,6 @@ class _LogsPageState extends State<LogsPage> {
             ? _allLines.length
             : _initialLoadCount;
 
-        if (!mounted) return;
         setState(() {
           _logLines.clear();
           _logLines.addAll(_allLines.take(initialCount));
@@ -212,7 +218,7 @@ class _LogsPageState extends State<LogsPage> {
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _hasError = true;
@@ -226,7 +232,6 @@ class _LogsPageState extends State<LogsPage> {
       return;
     }
 
-    // 使用 Future.microtask 避免在构建过程中调用 setState
     Future.microtask(() {
       if (!mounted) return;
 
@@ -236,7 +241,6 @@ class _LogsPageState extends State<LogsPage> {
 
       final newLines = _allLines.skip(_displayedLines).take(linesToLoad);
 
-      if (!mounted) return;
       setState(() {
         _logLines.addAll(newLines);
         _displayedLines += linesToLoad;
@@ -296,22 +300,23 @@ class _LogsPageState extends State<LogsPage> {
   Widget get buildBody {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(),
+        child: LoadingIndicator(),
       );
     }
 
     if (_hasError) {
-      return const Center(
-        child: Text('加载日志失败'),
+      return GeneralErrorWidget(
+        title: '无法读取日志',
+        errMsg: '请稍后重新加载。',
+        icon: Icons.receipt_long_rounded,
+        onRetry: _loadLogs,
       );
     }
 
     if (_logLines.isEmpty) {
-      return const Center(
-        child: GeneralEmptyState(
-          icon: Icons.receipt_long_rounded,
-          title: '暂无日志',
-        ),
+      return const GeneralEmptyState(
+        icon: Icons.receipt_long_rounded,
+        title: '还没有日志记录',
       );
     }
 

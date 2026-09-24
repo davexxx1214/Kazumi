@@ -34,6 +34,12 @@ class CharacterCard extends StatelessWidget {
             return CharacterPage(
               characterID: characterItem.id,
               characterName: characterItem.name,
+              characterRelation: characterItem.relation,
+              actorNames: characterItem.actorList
+                  .map((actor) => actor.name.trim())
+                  .where((name) => name.isNotEmpty)
+                  .toSet()
+                  .toList(),
             );
           },
         );

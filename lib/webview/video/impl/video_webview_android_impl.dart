@@ -100,8 +100,8 @@ class VideoWebviewAndroidImpl
                 logEventController.add(
                     'Loading video source ${decodeVideoSource(encodedUrl)}');
                 unloadPage();
-                videoParserEventController
-                    .add((decodeVideoSource(encodedUrl), offset));
+                final videoUrl = decodeVideoSource(encodedUrl);
+                notifyVideoSourceResolved(videoUrl);
               }
             }
           });
@@ -123,7 +123,7 @@ class VideoWebviewAndroidImpl
               isVideoSourceLoaded = true;
               videoLoadingEventController.add(false);
               unloadPage();
-              videoParserEventController.add((message, offset));
+              notifyVideoSourceResolved(message);
             }
           });
     }
