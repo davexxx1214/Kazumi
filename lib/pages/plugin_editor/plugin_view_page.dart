@@ -11,7 +11,18 @@ import 'package:kazumi/plugins/plugins_controller.dart';
 import 'package:kazumi/bean/settings/settings_detail_scaffold.dart';
 import 'package:kazumi/pages/plugin_editor/plugin_update_actions.dart';
 import 'package:kazumi/services/logging/logger.dart';
+import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/utils/encoding.dart';
+
+class _RuleFocusNodes {
+  final row = FocusNode(debugLabel: 'Rule row');
+  final menu = FocusNode(debugLabel: 'Rule menu');
+
+  void dispose() {
+    row.dispose();
+    menu.dispose();
+  }
+}
 
 class PluginViewPage extends StatefulWidget {
   const PluginViewPage({
@@ -33,6 +44,15 @@ class _PluginViewPageState extends State<PluginViewPage> {
 
   // 已选中的规则名称集合
   final Set<String> selectedNames = {};
+  final Map<String, _RuleFocusNodes> _ruleFocusNodes = {};
+
+  @override
+  void dispose() {
+    for (final nodes in _ruleFocusNodes.values) {
+      nodes.dispose();
+    }
+    super.dispose();
+  }
 
   Future<void> _handleUpdate() async {
     await updateAllPluginsWithFeedback(
@@ -290,6 +310,12 @@ class _PluginViewPageState extends State<PluginViewPage> {
                       itemCount: pluginsController.pluginList.length,
                       itemBuilder: (context, index) {
                         var plugin = pluginsController.pluginList[index];
+                        final focusNodes = isTV
+                            ? _ruleFocusNodes.putIfAbsent(
+                                plugin.name,
+                                _RuleFocusNodes.new,
+                              )
+                            : null;
                         bool canUpdate =
                             pluginsController.pluginUpdateStatus(plugin) ==
                                 PluginUpdateAvailability.updatable;
@@ -297,7 +323,13 @@ class _PluginViewPageState extends State<PluginViewPage> {
                           key: ObjectKey(plugin),
                           title: plugin.name,
                           selected: selectedNames.contains(plugin.name),
-                          trailing: pluginCardTrailing(index),
+                          focusNode: focusNodes?.row,
+                          trailingFocusNode:
+                              isMultiSelectMode ? null : focusNodes?.menu,
+                          trailing: pluginCardTrailing(
+                            index,
+                            menuFocusNode: focusNodes?.menu,
+                          ),
                           onLongPress: () {
                             if (!isMultiSelectMode) {
                               setState(() {
@@ -318,6 +350,8 @@ class _PluginViewPageState extends State<PluginViewPage> {
                                   selectedNames.add(plugin.name);
                                 }
                               });
+                            } else {
+                              focusNodes?.menu.requestFocus();
                             }
                           },
                           tags: [
@@ -348,7 +382,7 @@ class _PluginViewPageState extends State<PluginViewPage> {
     );
   }
 
-  Widget pluginCardTrailing(int index) {
+  Widget pluginCardTrailing(int index, {FocusNode? menuFocusNode}) {
     final plugin = pluginsController.pluginList[index];
     return Row(mainAxisSize: MainAxisSize.min, children: [
       isMultiSelectMode
@@ -367,7 +401,7 @@ class _PluginViewPageState extends State<PluginViewPage> {
                 });
               },
             )
-          : popupMenuButton(index),
+          : popupMenuButton(index, focusNode: menuFocusNode),
       ReorderableDragStartListener(
         index: index,
         child: const Icon(Icons.drag_handle), // 单独的拖拽按钮
@@ -375,13 +409,15 @@ class _PluginViewPageState extends State<PluginViewPage> {
     ]);
   }
 
-  Widget popupMenuButton(int index) {
+  Widget popupMenuButton(int index, {FocusNode? focusNode}) {
     final plugin = pluginsController.pluginList[index];
     return MenuAnchor(
       consumeOutsideTap: true,
       builder:
           (BuildContext context, MenuController controller, Widget? child) {
         return IconButton(
+          focusNode: focusNode,
+          tooltip: '规则操作',
           onPressed: () {
             if (controller.isOpen) {
               controller.close();

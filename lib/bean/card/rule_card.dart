@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Rounded tonal card for a rule entry, shared by the rule manage page,
 /// the rule shop page and the onboarding rule step.
@@ -12,6 +13,8 @@ class RuleCard extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.selected = false,
+    this.focusNode,
+    this.trailingFocusNode,
   });
 
   final String title;
@@ -23,12 +26,29 @@ class RuleCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final bool selected;
+  final FocusNode? focusNode;
+  final FocusNode? trailingFocusNode;
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+        focusNode?.hasPrimaryFocus == true) {
+      trailingFocusNode?.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+        trailingFocusNode?.hasPrimaryFocus == true) {
+      focusNode?.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    return Card(
+    final card = Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 8),
       color: selected
@@ -37,6 +57,8 @@ class RuleCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
       child: ListTile(
+        focusNode: focusNode,
+        focusColor: colorScheme.primaryContainer,
         onTap: onTap,
         onLongPress: onLongPress,
         selected: selected,
@@ -62,6 +84,12 @@ class RuleCard extends StatelessWidget {
               ),
         trailing: trailing,
       ),
+    );
+    if (focusNode == null || trailingFocusNode == null) return card;
+    return Focus(
+      canRequestFocus: false,
+      onKeyEvent: _handleKeyEvent,
+      child: card,
     );
   }
 }
