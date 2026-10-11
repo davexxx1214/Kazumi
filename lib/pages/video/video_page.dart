@@ -288,6 +288,8 @@ class _VideoPageState extends State<VideoPage>
       key.keyLabel == 'Menu';
 
   KeyEventResult _handlePlayerErrorKeyEvent(FocusNode node, KeyEvent event) {
+    final panelResult = _handleSidePanelKeyEvent(node, event);
+    if (panelResult == KeyEventResult.handled) return panelResult;
     if (!isTV ||
         videoPageController.errorMessage == null ||
         event is! KeyDownEvent ||
@@ -299,7 +301,9 @@ class _VideoPageState extends State<VideoPage>
   }
 
   KeyEventResult _handleSidePanelKeyEvent(FocusNode node, KeyEvent event) {
-    if (!isTV || event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (!isTV || !_isSidePanelOpen || event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.goBack ||
         key == LogicalKeyboardKey.escape ||
@@ -349,12 +353,7 @@ class _VideoPageState extends State<VideoPage>
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !_isSidePanelOpen,
       onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (!didPop && _isSidePanelOpen) {
-          _closeSidePanel();
-          return;
-        }
         if (didPop) {
           setState(() => _isExiting = true);
           playerController.beginShutdown();

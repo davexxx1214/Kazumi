@@ -25,6 +25,8 @@ class VideoSidePanel extends StatefulWidget {
 
 class VideoSidePanelState extends State<VideoSidePanel>
     with SingleTickerProviderStateMixin {
+  LocalHistoryEntry? _historyEntry;
+  bool _isShown = false;
   late final AnimationController _animation = AnimationController(
     vsync: this,
     duration: SidePanelTransition.duration,
@@ -32,16 +34,24 @@ class VideoSidePanelState extends State<VideoSidePanel>
   late final Animation<double> _opacity =
       _animation.drive(CurveTween(curve: Curves.easeIn));
 
-  bool get _isOpening =>
-      _animation.status == AnimationStatus.forward ||
-      _animation.status == AnimationStatus.completed;
-
-  bool get isOpen => _isOpening;
+  bool get isOpen => _isShown;
 
   void toggle() {
-    if (_isOpening) {
+    if (_isShown) {
       close();
     } else {
+      _isShown = true;
+      late final LocalHistoryEntry entry;
+      entry = LocalHistoryEntry(
+        impliesAppBarDismissal: false,
+        onRemove: () {
+          if (_historyEntry != entry) return;
+          _historyEntry = null;
+          if (mounted) close();
+        },
+      );
+      _historyEntry = entry;
+      ModalRoute.of(context)?.addLocalHistoryEntry(entry);
       if (widget.disableAnimations) {
         _animation.value = 1;
       } else {
@@ -52,6 +62,11 @@ class VideoSidePanelState extends State<VideoSidePanel>
   }
 
   void close() {
+    if (!_isShown) return;
+    _isShown = false;
+    final entry = _historyEntry;
+    _historyEntry = null;
+    entry?.remove();
     if (widget.disableAnimations) {
       _animation.value = 0;
     } else {
@@ -65,11 +80,11 @@ class VideoSidePanelState extends State<VideoSidePanel>
     super.didUpdateWidget(oldWidget);
     // Reset before rendering the new mode to avoid a sidebar flash.
     if (oldWidget.fullscreen != widget.fullscreen) {
-      final wasOpen = _isOpening;
+      final wasOpen = _isShown;
       _animation.value = 0;
       if (wasOpen) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) widget.onClosed?.call();
+          if (mounted) close();
         });
       }
     }
@@ -77,7 +92,12 @@ class VideoSidePanelState extends State<VideoSidePanel>
 
   @override
   void dispose() {
-    if (_isOpening) {
+    final wasOpen = _isShown;
+    _isShown = false;
+    final entry = _historyEntry;
+    _historyEntry = null;
+    entry?.remove();
+    if (wasOpen) {
       final onClosed = widget.onClosed;
       WidgetsBinding.instance.addPostFrameCallback((_) => onClosed?.call());
     }
