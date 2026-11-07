@@ -54,11 +54,16 @@ class PluginSiteClient {
           );
         }
         final nextUri = response.realUri.resolve(location);
-        if (nextUri.host.toLowerCase() != currentUri.host.toLowerCase()) {
+        // Credentials belong to an origin, not just a hostname. In particular,
+        // never forward them on HTTPS downgrades or to another port.
+        if (nextUri.scheme != currentUri.scheme ||
+            nextUri.host.toLowerCase() != currentUri.host.toLowerCase() ||
+            nextUri.port != currentUri.port) {
           currentHeaders = Map<String, dynamic>.from(currentHeaders)
             ..removeWhere(
               (name, _) => const {
                 'authorization',
+                'apikey',
                 'cookie',
                 'host',
                 'proxy-authorization',

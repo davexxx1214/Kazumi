@@ -129,11 +129,12 @@ class ApiRuleStrategy {
       throw ApiRuleFormatException('API 请求仅支持 HTTP(S): $url');
     }
     const blockedHeaders = <String>{
-      'authorization',
       'cookie',
       'host',
       'proxy-authorization',
     };
+    // Authorization is an explicit credential for this rule's target, never
+    // an application login token. PluginSiteClient strips it across origins.
     String? unsafeHeader;
     for (final header in config.headers.keys) {
       final normalized = header.toLowerCase();
@@ -185,7 +186,14 @@ class ApiRuleStrategy {
           diagnostics.add('搜索节点 $index 缺少名称或来源，已跳过');
           continue;
         }
-        results.add(SearchItem(name: name, src: source));
+        final resolvedSource = config.sourceTemplate.trim().isEmpty
+            ? source
+            : _renderTemplate(
+                config.sourceTemplate.trim(),
+                {'source': source},
+                encode: true,
+              );
+        results.add(SearchItem(name: name, src: resolvedSource));
         fragments.add(jsonEncode(node));
       } on ApiRuleFormatException {
         rethrow;

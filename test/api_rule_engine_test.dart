@@ -78,17 +78,30 @@ void main() {
       ),
       throwsA(isA<ApiRuleFormatException>()),
     );
-    expect(
-      () => engine.prepareRequest(
-        ApiRequestConfig(
-          method: 'GET',
-          url: 'https://example.com/search',
-          headers: const {'Authorization': 'secret'},
+    for (final header in ['Cookie', 'HOST', 'Proxy-Authorization']) {
+      expect(
+        () => engine.prepareRequest(
+          ApiRequestConfig(
+            method: 'GET',
+            url: 'https://example.com/search',
+            headers: {header: 'secret'},
+          ),
+          const <String, Object?>{},
         ),
-        const <String, Object?>{},
+        throwsA(isA<ApiRuleFormatException>()),
+      );
+    }
+  });
+
+  test('allows an explicit rule Authorization header', () {
+    final request = engine.prepareRequest(
+      ApiRequestConfig(
+        url: 'https://example.com/search',
+        headers: const {'Authorization': 'Bearer rule-token'},
       ),
-      throwsA(isA<ApiRuleFormatException>()),
+      const <String, Object?>{},
     );
+    expect(request.headers['Authorization'], 'Bearer rule-token');
   });
 
   test('parses Liangzi search and delimited chapters', () {
@@ -134,6 +147,31 @@ void main() {
     expect(roads.roads[0].data[0], 'https://cdn-a.test/1.m3u8');
     expect(roads.roads[1].name, '线路B');
     expect(roads.roads[1].data.single, 'https://cdn-b.test/main.m3u8');
+  });
+
+  test('renders search source templates and encodes source IDs', () {
+    final config = ApiSearchConfig(
+      listPath: r'$.list[*]',
+      namePath: r'$.name',
+      sourcePath: r'$.id',
+      sourceTemplate: 'https://example.com/detail/@source.html',
+    );
+    final result = engine.parseSearch(
+      jsonEncode({
+        'list': [
+          {'name': 'Numeric ID', 'id': 123},
+          {'name': 'Special characters', 'id': 'a/b?c'},
+          {'name': 'Missing ID'},
+        ],
+      }),
+      config,
+    );
+    expect(result.items.map((item) => item.src), [
+      'https://example.com/detail/123.html',
+      'https://example.com/detail/a%2Fb%3Fc.html',
+    ]);
+    expect(result.diagnostics, hasLength(1));
+    expect(ApiSearchConfig.fromJson({}).sourceTemplate, isEmpty);
   });
 
   test('parses TvTFun chapters and constructs playback page URLs', () {

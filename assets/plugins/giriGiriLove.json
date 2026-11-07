@@ -1,8 +1,8 @@
 {
-    "api": "6",
+    "api": "9",
     "type": "anime",
     "name": "giriGiriLove",
-    "version": "2.1",
+    "version": "2.6",
     "muliSources": true,
     "useWebview": true,
     "useNativePlayer": true,
@@ -10,19 +10,44 @@
     "useLegacyParser": false,
     "adBlocker": false,
     "userAgent": "",
-    "baseURL": "https://anime.girigirilove.top",
-    "searchURL": "https://anime.girigirilove.top/search/-------------/?wd=@keyword",
-    "searchList": "//div[@class='vod-detail style-detail cor4 search-list']",
-    "searchName": "//div/div[2]/a",
-    "searchResult": "//div/div[2]/a",
-    "chapterRoads": "//ul[@class='anthology-list-play size']",
-    "chapterResult": "//li/a",
-    "referer": "",
-    "antiCrawlerConfig": {
-        "enabled": true,
-        "captchaType": 1,
-        "captchaImage": "//img[@class='ds-verify-img']",
-        "captchaInput": "//div[4]/div[2]/div/div/input",
-        "captchaButton": "//div[4]/div[2]/button"
-    }
+    "baseURL": "https://ani.girigirilove.com",
+    "searchMode": "api",
+    "chapterMode": "api",
+    "searchApiConfig": {
+        "request": {
+            "method": "GET",
+            "url": "https://m3u8.girigirilove.com/api.php/Vod/get_list",
+            "query": {
+                "vod_name": "@keyword",
+                "offset": "0",
+                "limit": "24"
+            }
+        },
+        "listPath": "$.info.rows[*]",
+        "namePath": "$.vod_name",
+        "sourcePath": "$.vod_id",
+        "sourceTemplate": ""
+    },
+    "chapterApiConfig": {
+        "request": {
+            "method": "GET",
+            "url": "https://m3u8.girigirilove.com/api.php/Vod/get_detail",
+            "query": {
+                "vod_id": "@source"
+            }
+        },
+        "format": "delimited",
+        "roadNamesPath": "$.info.vod_play_from",
+        "roadEpisodesPath": "$.info.vod_play_url",
+        "roadSeparator": "$$$",
+        "episodeSeparator": "#",
+        "fieldSeparator": "$"
+    },
+    "searchURL": "",
+    "searchList": "",
+    "searchName": "",
+    "searchResult": "",
+    "chapterRoads": "",
+    "chapterResult": "",
+    "referer": ""
 }

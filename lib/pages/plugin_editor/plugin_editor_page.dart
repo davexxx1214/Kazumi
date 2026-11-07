@@ -181,6 +181,8 @@ class _PluginEditorPageState extends State<PluginEditorPage> {
       TextEditingController();
   final TextEditingController searchApiSourcePathController =
       TextEditingController();
+  final TextEditingController searchApiSourceTemplateController =
+      TextEditingController();
   final TextEditingController chapterApiURLController = TextEditingController();
   final TextEditingController chapterApiHeadersController =
       TextEditingController();
@@ -300,6 +302,7 @@ class _PluginEditorPageState extends State<PluginEditorPage> {
     searchApiListPathController.text = plugin.searchApiConfig.listPath;
     searchApiNamePathController.text = plugin.searchApiConfig.namePath;
     searchApiSourcePathController.text = plugin.searchApiConfig.sourcePath;
+    searchApiSourceTemplateController.text = plugin.searchApiConfig.sourceTemplate;
     chapterApiMethod = plugin.chapterApiConfig.request.method;
     chapterApiBodyType = plugin.chapterApiConfig.request.bodyType;
     chapterApiFormat = plugin.chapterApiConfig.format;
@@ -373,6 +376,7 @@ class _PluginEditorPageState extends State<PluginEditorPage> {
     searchApiListPathController.dispose();
     searchApiNamePathController.dispose();
     searchApiSourcePathController.dispose();
+    searchApiSourceTemplateController.dispose();
     chapterApiURLController.dispose();
     chapterApiHeadersController.dispose();
     chapterApiQueryController.dispose();
@@ -843,6 +847,10 @@ class _PluginEditorPageState extends State<PluginEditorPage> {
           controller: searchApiSourcePathController,
           label: _RuleEditorText.itemSourcePath,
         ),
+        EditorTextField(
+          controller: searchApiSourceTemplateController,
+          label: '详情页地址模板（可选，使用 @source 引用条目来源）',
+        ),
       ];
 
   List<Widget> _buildApiChapterFields() => [
@@ -1035,6 +1043,7 @@ class _PluginEditorPageState extends State<PluginEditorPage> {
       listPath: valueOf(searchApiListPathController),
       namePath: valueOf(searchApiNamePathController),
       sourcePath: valueOf(searchApiSourcePathController),
+      sourceTemplate: valueOf(searchApiSourceTemplateController),
     );
     if (!shouldValidate) return config;
     if (config.request.url.isEmpty) {

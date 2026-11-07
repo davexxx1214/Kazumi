@@ -31,6 +31,8 @@ class DioFactory {
         interceptors: [_RulesMirrorInterceptor()],
       );
 
+  // Rule credentials are supplied per request. Keep this client separate from
+  // apiDio and its application authentication/mirror interceptors.
   static Dio get pluginDio => _pluginDio ??= _create(
         NetworkConfig.fromSettings(),
         defaultHeaders: {
