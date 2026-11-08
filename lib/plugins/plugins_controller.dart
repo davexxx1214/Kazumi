@@ -119,6 +119,11 @@ abstract class _PluginsController with Store {
       await newPluginDirectory!.create(recursive: true);
     }
     await _loadAllPlugins();
+    // Install defaults without an interactive first-run flow, including when
+    // an earlier launch left an empty plugins.json before setup completed.
+    if (pluginList.isEmpty) {
+      await copyPluginsToExternalDirectory();
+    }
   }
 
   // Loads all plugins from the directory, populates the plugin list, and saves to plugins.json if needed

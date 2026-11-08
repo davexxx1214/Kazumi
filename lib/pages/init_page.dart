@@ -76,17 +76,6 @@ class _InitPageState extends State<InitPage> {
     if (!mounted) {
       return;
     }
-    // First launch: no installed rules yet, hand over to the onboarding flow.
-    // OnboardingPage takes care of navigating to the default page and
-    // triggering the auto update check afterwards.
-    if (pluginsController.pluginList.isEmpty) {
-      context.navigate('/onboarding');
-      return;
-    }
-
-    if (!mounted) {
-      return;
-    }
     final updateController = myController;
     unawaited(runStartupUpdateCheck(
       isEnabled: () => GStorage.getSetting(SettingsKeys.autoUpdate),
