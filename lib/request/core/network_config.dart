@@ -28,48 +28,59 @@ class NetworkConfig {
 
   bool get hasProxy => proxyHost != null && proxyPort != null;
 
-  IOHttpClientAdapter createAdapter({bool publicTargetsOnly = false}) {
-    return IOHttpClientAdapter(
-      createHttpClient: () {
-        final client = HttpClient();
-        if (publicTargetsOnly) {
-          client.connectionFactory = (uri, proxyHost, proxyPort) async {
-            if (proxyHost != null && proxyPort != null) {
-              return Socket.startConnect(proxyHost, proxyPort);
-            }
-            final addresses = await PublicNetworkPolicy.resolve(uri);
-            final socketTask = await Socket.startConnect(
-              addresses.first,
-              uri.port,
-            );
-            if (uri.scheme == 'http') {
-              return socketTask;
-            }
-            final secureSocket = socketTask.socket.then<Socket>(
-              (socket) => SecureSocket.secure(
-                socket,
-                host: uri.host,
-                onBadCertificate: allowBadCertificates ? (_) => true : null,
-              ),
-            );
-            return ConnectionTask.fromSocket<Socket>(
-              secureSocket,
-              socketTask.cancel,
-            );
-          };
-        }
-        if (hasProxy) {
-          client.findProxy = (_) => 'PROXY $proxyHost:$proxyPort';
-        } else if (Platform.isWindows) {
-          client.findProxy = SystemProxyService.findProxy;
-        }
-        if (allowBadCertificates) {
-          client.badCertificateCallback = (cert, host, port) => true;
-        }
-        return client;
-      },
-    );
+  Uri? proxyForUri(Uri uri) {
+    if (hasProxy) return Uri(scheme: 'http', host: proxyHost, port: proxyPort);
+    if (Platform.isWindows) {
+      final proxy = SystemProxyService.findProxy(uri);
+      if (proxy.startsWith('PROXY ')) {
+        return Uri.parse('http://${proxy.substring(6)}');
+      }
+    }
+    return null;
   }
+
+  HttpClient createHttpClient({bool publicTargetsOnly = false}) {
+    final client = HttpClient();
+    if (publicTargetsOnly) {
+      client.connectionFactory = (uri, proxyHost, proxyPort) async {
+        if (proxyHost != null && proxyPort != null) {
+          return Socket.startConnect(proxyHost, proxyPort);
+        }
+        final addresses = await PublicNetworkPolicy.resolve(uri);
+        final socketTask = await Socket.startConnect(addresses.first, uri.port);
+        if (uri.scheme == 'http') {
+          return socketTask;
+        }
+        final secureSocket = socketTask.socket.then<Socket>(
+          (socket) => SecureSocket.secure(
+            socket,
+            host: uri.host,
+            onBadCertificate: allowBadCertificates ? (_) => true : null,
+          ),
+        );
+        return ConnectionTask.fromSocket<Socket>(
+          secureSocket,
+          socketTask.cancel,
+        );
+      };
+    }
+
+    if (hasProxy) {
+      client.findProxy = (_) => 'PROXY $proxyHost:$proxyPort';
+    } else if (Platform.isWindows) {
+      client.findProxy = SystemProxyService.findProxy;
+    }
+    if (allowBadCertificates) {
+      client.badCertificateCallback = (cert, host, port) => true;
+    }
+    return client;
+  }
+
+  IOHttpClientAdapter createAdapter({bool publicTargetsOnly = false}) =>
+      IOHttpClientAdapter(
+        createHttpClient: () =>
+            createHttpClient(publicTargetsOnly: publicTargetsOnly),
+      );
 
   NetworkConfig copyWith({
     Duration? connectTimeout,

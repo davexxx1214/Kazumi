@@ -1,5 +1,6 @@
 import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/services/player/syncplay_endpoint.dart';
+import 'package:kazumi/utils/device.dart';
 
 enum SettingGroup {
   player,
@@ -103,6 +104,13 @@ class SettingsKeys {
     true,
     group: SettingGroup.danmaku,
   );
+  /// Off on desktop and on on mobile, like the B 站 client.
+  static final pauseOnDanmakuEdit = SettingKey<bool>(
+    'pauseOnDanmakuEdit',
+    true,
+    group: SettingGroup.danmaku,
+    defaultResolver: (_) => !isDesktop(),
+  );
   static const danmakuBorder = SettingKey<bool>(
     _SettingBoxKey.danmakuBorder,
     true,
@@ -147,6 +155,11 @@ class SettingsKeys {
   static const danmakuDeduplication = SettingKey<bool>(
     _SettingBoxKey.danmakuDeduplication,
     false,
+    group: SettingGroup.danmaku,
+  );
+  static const danmakuChConvert = SettingKey<int>(
+    'danmakuChConvert',
+    0,
     group: SettingGroup.danmaku,
   );
   static const danmakuArea = SettingKey<double>(
@@ -254,6 +267,11 @@ class SettingsKeys {
     true,
     group: SettingGroup.proxy,
   );
+  static const ruleRepositoryUrl = SettingKey<String>(
+    'ruleRepositoryUrl',
+    '',
+    group: SettingGroup.proxy,
+  );
   static const enableBangumiProxy = SettingKey<bool>(
     _SettingBoxKey.enableBangumiProxy,
     true,
@@ -262,6 +280,17 @@ class SettingsKeys {
   static const imageAcceleration = SettingKey<String>(
     'imageAcceleration',
     'ech',
+    group: SettingGroup.proxy,
+  );
+  // Unset modes inherit the old mirror switches (enabled by default).
+  static const bangumiAcceleration = SettingKey<String>(
+    'bangumiAcceleration',
+    '',
+    group: SettingGroup.proxy,
+  );
+  static const rulesMirror = SettingKey<String>(
+    'rulesMirror',
+    '',
     group: SettingGroup.proxy,
   );
   static const enableSystemProxy = SettingKey<bool>(
@@ -492,6 +521,11 @@ class SettingsKeys {
     false,
     group: SettingGroup.misc,
   );
+  static const onboardingCompleted = SettingKey<bool>(
+    'onboardingCompleted',
+    false,
+    group: SettingGroup.misc,
+  );
   static const bangumiSyncEnable = SettingKey<bool>(
     _SettingBoxKey.bangumiSyncEnable,
     false,
@@ -566,6 +600,7 @@ class SettingsKeys {
     buttonSkipTime,
     arrowKeySkipTime,
     danmakuEnhance,
+    pauseOnDanmakuEdit,
     danmakuBorder,
     danmakuBorderSize,
     danmakuOpacity,
@@ -575,6 +610,7 @@ class SettingsKeys {
     danmakuBottom,
     danmakuMassive,
     danmakuDeduplication,
+    danmakuChConvert,
     danmakuArea,
     danmakuColor,
     danmakuDuration,
@@ -596,8 +632,11 @@ class SettingsKeys {
     oledEnhance,
     displayMode,
     enableGitProxy,
+    ruleRepositoryUrl,
     enableBangumiProxy,
     imageAcceleration,
+    bangumiAcceleration,
+    rulesMirror,
     enableSystemProxy,
     defaultStartupPage,
     webDavEnable,
@@ -643,6 +682,7 @@ class SettingsKeys {
     downloadDirectory,
     downloadDirectoryBookmark,
     shortcutDialogShown,
+    onboardingCompleted,
     bangumiSyncEnable,
     bangumiAccessToken,
     bangumiSyncPriority,

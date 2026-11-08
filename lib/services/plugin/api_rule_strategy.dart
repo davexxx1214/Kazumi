@@ -43,7 +43,8 @@ class RestrictedJsonPath {
         final content = expression.substring(index + 1, end).trim();
         final isIndex = RegExp(r'^\d+$').hasMatch(content);
         final isWildcard = content == '*';
-        final isQuoted = content.length >= 2 &&
+        final isQuoted =
+            content.length >= 2 &&
             ((content.startsWith("'") && content.endsWith("'")) ||
                 (content.startsWith('"') && content.endsWith('"')));
         if (!isIndex && !isWildcard && !isQuoted) {
@@ -128,11 +129,7 @@ class ApiRuleStrategy {
     if (uri.scheme != 'http' && uri.scheme != 'https') {
       throw ApiRuleFormatException('API 请求仅支持 HTTP(S): $url');
     }
-    const blockedHeaders = <String>{
-      'cookie',
-      'host',
-      'proxy-authorization',
-    };
+    const blockedHeaders = <String>{'cookie', 'host', 'proxy-authorization'};
     // Authorization is an explicit credential for this rule's target, never
     // an application login token. PluginSiteClient strips it across origins.
     String? unsafeHeader;
@@ -164,12 +161,17 @@ class ApiRuleStrategy {
     RestrictedJsonPath.validate(config.listPath);
     RestrictedJsonPath.validate(config.namePath);
     RestrictedJsonPath.validate(config.sourcePath);
+    final template = config.sourceTemplate;
+    if (template.isNotEmpty && !template.contains('@source')) {
+      throw const ApiRuleFormatException('详情页地址模板必须引用 @source');
+    }
   }
 
   RuleSearchParseResult parseSearch(String raw, ApiSearchConfig config) {
     validateSearchConfig(config);
     final document = decodeResponse(raw);
     final nodes = RestrictedJsonPath.read(document, config.listPath);
+    final template = config.sourceTemplate;
     final results = <SearchItem>[];
     final fragments = <String>[];
     final diagnostics = <String>[];
@@ -186,14 +188,11 @@ class ApiRuleStrategy {
           diagnostics.add('搜索节点 $index 缺少名称或来源，已跳过');
           continue;
         }
-        final resolvedSource = config.sourceTemplate.trim().isEmpty
+        // Plain replacement so @source may follow a letter (`/GV@source`).
+        final src = template.isEmpty
             ? source
-            : _renderTemplate(
-                config.sourceTemplate.trim(),
-                {'source': source},
-                encode: true,
-              );
-        results.add(SearchItem(name: name, src: resolvedSource));
+            : template.replaceAll('@source', Uri.encodeComponent(source));
+        results.add(SearchItem(name: name, src: src));
         fragments.add(jsonEncode(node));
       } on ApiRuleFormatException {
         rethrow;
@@ -228,24 +227,9 @@ class ApiRuleStrategy {
     }
     final diagnostics = <String>[];
     final roads = config.format == ApiChapterFormat.delimited
-        ? _parseDelimited(
-            document,
-            config,
-            rootVariables,
-            baseUrl,
-            diagnostics,
-          )
-        : _parseNested(
-            document,
-            config,
-            rootVariables,
-            baseUrl,
-            diagnostics,
-          );
-    return RuleChapterParseResult(
-      roads: roads,
-      diagnostics: diagnostics,
-    );
+        ? _parseDelimited(document, config, rootVariables, baseUrl, diagnostics)
+        : _parseNested(document, config, rootVariables, baseUrl, diagnostics);
+    return RuleChapterParseResult(roads: roads, diagnostics: diagnostics);
   }
 
   List<Road> _parseNested(
@@ -274,16 +258,15 @@ class ApiRuleStrategy {
         );
         final urls = <String>[];
         final names = <String>[];
-        for (var episodeIndex = 0;
-            episodeIndex < episodeNodes.length;
-            episodeIndex++) {
+        for (
+          var episodeIndex = 0;
+          episodeIndex < episodeNodes.length;
+          episodeIndex++
+        ) {
           try {
             final episodeNode = episodeNodes[episodeIndex];
             final episodeName = _stringValue(
-              RestrictedJsonPath.readFirst(
-                episodeNode,
-                config.episodeNamePath,
-              ),
+              RestrictedJsonPath.readFirst(episodeNode, config.episodeNamePath),
             );
             final rawUrl = config.episodeUrlPath.trim().isEmpty
                 ? ''
@@ -302,9 +285,7 @@ class ApiRuleStrategy {
               baseUrl: baseUrl,
             );
             if (pageUrl.isEmpty) {
-              diagnostics.add(
-                '线路 $roadIndex 的剧集节点 $episodeIndex 缺少 URL，已跳过',
-              );
+              diagnostics.add('线路 $roadIndex 的剧集节点 $episodeIndex 缺少 URL，已跳过');
               continue;
             }
             urls.add(pageUrl);
@@ -314,9 +295,7 @@ class ApiRuleStrategy {
           } on ApiRuleFormatException {
             rethrow;
           } catch (error) {
-            diagnostics.add(
-              '线路 $roadIndex 的剧集节点 $episodeIndex 解析失败: $error',
-            );
+            diagnostics.add('线路 $roadIndex 的剧集节点 $episodeIndex 解析失败: $error');
           }
         }
         if (urls.isEmpty) {
@@ -360,16 +339,16 @@ class ApiRuleStrategy {
       final urls = <String>[];
       final names = <String>[];
       final entries = roadGroups[roadIndex].split(config.episodeSeparator);
-      for (var episodeIndex = 0;
-          episodeIndex < entries.length;
-          episodeIndex++) {
+      for (
+        var episodeIndex = 0;
+        episodeIndex < entries.length;
+        episodeIndex++
+      ) {
         final entry = entries[episodeIndex].trim();
         if (entry.isEmpty) continue;
         final separatorIndex = entry.indexOf(config.fieldSeparator);
         if (separatorIndex < 0) {
-          diagnostics.add(
-            '线路 $roadIndex 的剧集条目 $episodeIndex 缺少字段分隔符，已跳过',
-          );
+          diagnostics.add('线路 $roadIndex 的剧集条目 $episodeIndex 缺少字段分隔符，已跳过');
           continue;
         }
         final name = entry.substring(0, separatorIndex).trim();
@@ -386,9 +365,7 @@ class ApiRuleStrategy {
             baseUrl: baseUrl,
           );
           if (pageUrl.isEmpty) {
-            diagnostics.add(
-              '线路 $roadIndex 的剧集条目 $episodeIndex 缺少 URL，已跳过',
-            );
+            diagnostics.add('线路 $roadIndex 的剧集条目 $episodeIndex 缺少 URL，已跳过');
             continue;
           }
           urls.add(pageUrl);
@@ -396,17 +373,16 @@ class ApiRuleStrategy {
         } on ApiRuleFormatException {
           rethrow;
         } catch (error) {
-          diagnostics.add(
-            '线路 $roadIndex 的剧集条目 $episodeIndex 解析失败: $error',
-          );
+          diagnostics.add('线路 $roadIndex 的剧集条目 $episodeIndex 解析失败: $error');
         }
       }
       if (urls.isEmpty) {
         diagnostics.add('线路 $roadIndex 没有有效剧集，已跳过');
         continue;
       }
-      final configuredName =
-          roadIndex < roadNames.length ? roadNames[roadIndex].trim() : '';
+      final configuredName = roadIndex < roadNames.length
+          ? roadNames[roadIndex].trim()
+          : '';
       roads.add(
         Road(
           name: configuredName.isEmpty
@@ -449,9 +425,10 @@ class ApiRuleStrategy {
     if (uri == null) {
       throw ApiRuleFormatException('剧集页面 URL 无效: $path');
     }
-    final renderedQuery = _renderMap(page.query, variables).map(
-      (key, value) => MapEntry(key, value.toString()),
-    );
+    final renderedQuery = _renderMap(
+      page.query,
+      variables,
+    ).map((key, value) => MapEntry(key, value.toString()));
     final mergedQuery = <String, String>{
       ...uri.queryParameters,
       ...renderedQuery,
@@ -491,9 +468,7 @@ class ApiRuleStrategy {
     if (config.episodeUrlPath.trim().isNotEmpty) {
       RestrictedJsonPath.validate(config.episodeUrlPath);
     } else if (config.episodePage == null) {
-      throw const ApiRuleFormatException(
-        '必须配置播放入口地址路径或播放页地址模板',
-      );
+      throw const ApiRuleFormatException('必须配置播放入口地址路径或播放页地址模板');
     }
     if (config.episodePage != null && config.episodePage!.url.trim().isEmpty) {
       throw const ApiRuleFormatException('播放页地址模板不能为空');
@@ -529,10 +504,7 @@ class ApiRuleStrategy {
     }
     if (value is Map) {
       return value.map(
-        (key, item) => MapEntry(
-          key.toString(),
-          _renderValue(item, variables),
-        ),
+        (key, item) => MapEntry(key.toString(), _renderValue(item, variables)),
       );
     }
     return value;

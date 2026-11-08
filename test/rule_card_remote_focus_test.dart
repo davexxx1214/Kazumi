@@ -2,39 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kazumi/bean/card/rule_card.dart';
+import 'package:kazumi/bean/widget/kazumi_menu.dart';
 
 void main() {
-  testWidgets('remote arrows reach the rule menu and select operates it',
-      (tester) async {
+  testWidgets('remote arrows reach the rule menu and select operates it', (
+    tester,
+  ) async {
     final rowFocusNode = FocusNode();
     final menuFocusNode = FocusNode();
     var edited = false;
     addTearDown(rowFocusNode.dispose);
     addTearDown(menuFocusNode.dispose);
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: RuleCard(
-          title: '测试规则',
-          focusNode: rowFocusNode,
-          trailingFocusNode: menuFocusNode,
-          onTap: menuFocusNode.requestFocus,
-          trailing: MenuAnchor(
-            menuChildren: [
-              MenuItemButton(
-                onPressed: () => edited = true,
-                child: const Text('编辑'),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RuleCard(
+            title: '测试规则',
+            focusNode: rowFocusNode,
+            trailingFocusNode: menuFocusNode,
+            onTap: menuFocusNode.requestFocus,
+            trailing: KazumiMenuButton(
+              menuChildren: [
+                KazumiMenuItem(onPressed: () => edited = true, label: '编辑'),
+              ],
+              builder: (context, toggle) => IconButton(
+                focusNode: menuFocusNode,
+                onPressed: toggle,
+                icon: const Icon(Icons.more_vert),
               ),
-            ],
-            builder: (context, controller, child) => IconButton(
-              focusNode: menuFocusNode,
-              onPressed: controller.open,
-              icon: const Icon(Icons.more_vert),
             ),
           ),
         ),
       ),
-    ));
+    );
 
     rowFocusNode.requestFocus();
     await tester.pump();

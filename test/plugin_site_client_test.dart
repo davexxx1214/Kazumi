@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:kazumi/plugins/api_rule_config.dart';
 import 'package:kazumi/request/clients/bangumi_client.dart';
+import 'package:kazumi/request/apis/plugin_catalog_api.dart';
 import 'package:kazumi/request/clients/plugin_site_client.dart';
 import 'package:kazumi/request/core/dio_factory.dart';
 import 'package:kazumi/services/plugin/api_rule_strategy.dart';
@@ -42,7 +43,7 @@ void main() {
 
   tearDown(() {
     DioFactory.pluginDio.close(force: true);
-    DioFactory.apiDio.close(force: true);
+    DioFactory.bangumiDio.close(force: true);
     DioFactory.reset();
   });
 
@@ -60,15 +61,50 @@ void main() {
     await directory.delete(recursive: true);
   });
 
+  test(
+    'explicit rule repositories keep empty catalogs without fallback',
+    () async {
+      final catalogAdapter = _RecordingAdapter()..body = '[]';
+      DioFactory.rulesRepoDio.httpClientAdapter = catalogAdapter;
+      final rules = await PluginCatalogApi.getPluginList(
+        'https://custom.example/rules/index.json',
+      );
+      expect(rules, isEmpty);
+      expect(
+        catalogAdapter.requests.single.uri.toString(),
+        'https://custom.example/rules/index.json',
+      );
+    },
+  );
+
+  test(
+    'custom repository rule downloads encode names and use that repository',
+    () async {
+      final catalogAdapter = _RecordingAdapter()
+        ..body =
+            '{"name":"custom rule","version":"1.0","baseURL":"https://video.example"}';
+      DioFactory.rulesRepoDio.httpClientAdapter = catalogAdapter;
+      final rule = await PluginCatalogApi.getPlugin(
+        'https://custom.example/rules/',
+        'custom rule',
+      );
+      expect(rule.name, 'custom rule');
+      expect(
+        catalogAdapter.requests.single.uri.toString(),
+        'https://custom.example/rules/custom%20rule.json',
+      );
+    },
+  );
+
   test('application login credentials never enter rule requests', () async {
     final appAdapter = _RecordingAdapter();
-    DioFactory.apiDio.httpClientAdapter = appAdapter;
+    DioFactory.bangumiDio.httpClientAdapter = appAdapter;
     await BangumiClient.instance.get('https://api.bgm.tv/v0/me');
     expect(
       _header(appAdapter.requests.single, 'authorization'),
       'Bearer app-login-token',
     );
-    expect(identical(DioFactory.apiDio, DioFactory.pluginDio), isFalse);
+    expect(identical(DioFactory.bangumiDio, DioFactory.pluginDio), isFalse);
 
     await PluginSiteClient.instance.requestText(
       'https://rules.example/search',
@@ -206,6 +242,7 @@ class _RecordingAdapter implements HttpClientAdapter {
   final requests = <RequestOptions>[];
   List<String> locations = [];
   int redirectStatus = 302;
+  String body = '{}';
 
   @override
   Future<ResponseBody> fetch(
@@ -225,7 +262,7 @@ class _RecordingAdapter implements HttpClientAdapter {
       );
     }
     return ResponseBody.fromString(
-      '{}',
+      body,
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],

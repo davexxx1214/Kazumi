@@ -10,6 +10,7 @@ import 'package:kazumi/bean/appbar/sys_app_bar.dart';
 import 'package:kazumi/bean/card/network_img_layer.dart';
 import 'package:kazumi/bean/dialog/adaptive_bottom_sheet.dart';
 import 'package:kazumi/bean/dialog/material_bottom_sheet.dart';
+import 'package:kazumi/bean/widget/kazumi_menu.dart';
 import 'package:kazumi/bean/widget/loading_indicator.dart';
 import 'package:kazumi/bean/widget/empty_state_widget.dart';
 import 'package:kazumi/bean/widget/state_presentation.dart';
@@ -24,10 +25,14 @@ part 'search_filter_sheet.dart';
 part 'search_widgets.dart';
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key, required this.controller, this.inputTag = ''});
+  const SearchPage({
+    super.key,
+    required this.controller,
+    this.initialQuery = '',
+  });
 
   final SearchPageController controller;
-  final String inputTag;
+  final String initialQuery;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -54,11 +59,9 @@ class _SearchPageState extends State<SearchPage> {
     );
     _scroll.addListener(_loadMoreOnScroll);
     _controller.loadSearchHistories();
-    if (widget.inputTag.isNotEmpty) {
+    if (widget.initialQuery.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _applyFilters(
-            SearchFilterState(tags: [Uri.decodeComponent(widget.inputTag)]));
+        if (mounted) _submit(widget.initialQuery);
       });
     }
   }

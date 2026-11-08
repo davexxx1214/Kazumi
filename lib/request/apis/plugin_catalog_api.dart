@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:kazumi/services/logging/logger.dart';
+import 'package:kazumi/request/config/rules_repository_config.dart';
 import 'package:kazumi/request/config/api_endpoints.dart';
 import 'package:kazumi/request/clients/rules_repo_client.dart';
 import 'package:kazumi/plugins/plugins.dart';
@@ -62,8 +63,18 @@ class PluginCatalogApi {
   }
 
   static Future<PluginSourceRepository?> _resolveRepository({
+    String repository = '',
     bool forceRefresh = false,
   }) async {
+    // Explicit repositories use the main-branch contract: do not silently
+    // download same-named rules from another repository when one is empty/down.
+    if (repository.trim().isNotEmpty) {
+      final index = RulesRepositoryConfig.catalogUri(repository);
+      return PluginSourceRepository(
+        indexUrl: index.toString(),
+        pluginBaseUrl: index.resolve('.').toString(),
+      );
+    }
     final configuredIndexUrl = _configuredIndexUrl();
     if (!forceRefresh &&
         _cachedRepository != null &&
@@ -108,8 +119,13 @@ class PluginCatalogApi {
     return null;
   }
 
-  static Future<List<PluginHTTPItem>> getPluginList() async {
-    final repository = await _resolveRepository(forceRefresh: true);
+  static Future<List<PluginHTTPItem>> getPluginList(
+    String configuredRepository,
+  ) async {
+    final repository = await _resolveRepository(
+      repository: configuredRepository,
+      forceRefresh: true,
+    );
     if (repository == null) {
       throw const FormatException('No compatible rule repository is available');
     }
@@ -157,12 +173,19 @@ class PluginCatalogApi {
     }
   }
 
-  static Future<Plugin> getPlugin(String name) async {
-    final repository = await _resolveRepository();
+  static Future<Plugin> getPlugin(
+    String configuredRepository,
+    String name,
+  ) async {
+    final repository = await _resolveRepository(
+      repository: configuredRepository,
+    );
     if (repository == null) {
       throw const FormatException('No compatible rule repository is available');
     }
-    final raw = await _client.getText('${repository.pluginBaseUrl}$name.json');
+    final raw = await _client.getText(
+      RulesRepositoryConfig.ruleUri(repository.pluginBaseUrl, name).toString(),
+    );
     final jsonData = json.decode(raw);
     if (jsonData is! Map) {
       throw FormatException('Rule $name must be a JSON object');

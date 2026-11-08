@@ -3,15 +3,15 @@
 ## Repo overview
 
 - This repository is a Flutter application.
-- The required Flutter SDK version is pinned in `pubspec.yaml` to `3.47.5`.
-- Matching Dart comes from that Flutter release and should resolve to Dart `3.13.4`.
+- The required Flutter SDK version is pinned in `pubspec.yaml` to `3.47.9`.
+- Matching Dart comes from that Flutter release and should resolve to Dart `3.13.7`.
 
 ## Cursor Cloud specific instructions
 
-- Cursor Cloud base images for this repo should have Flutter `3.47.5` preinstalled at `/opt/flutter`.
-- If `/opt/flutter/bin/flutter --version` does not report `3.47.5`, switch the shared SDK checkout before doing repo work:
+- Cursor Cloud base images for this repo should have Flutter `3.47.9` preinstalled at `/opt/flutter`.
+- If `/opt/flutter/bin/flutter --version` does not report `3.47.9`, switch the shared SDK checkout before doing repo work:
   - `git -C /opt/flutter fetch --tags origin`
-  - `git -C /opt/flutter checkout 3.47.5`
+  - `git -C /opt/flutter checkout 3.47.9`
 - Ensure `/opt/flutter/bin` is on `PATH`.
 - Run `flutter config --no-analytics` once in the environment if needed.
 - In a fresh workspace, run `flutter pub get` from the repository root before analysis or tests.

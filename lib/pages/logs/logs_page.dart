@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:kazumi/bean/appbar/sys_app_bar.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
+import 'package:kazumi/bean/settings/settings_detail_scaffold.dart';
 import 'package:kazumi/bean/widget/empty_state_widget.dart';
 import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/utils/constants.dart';
@@ -288,16 +288,14 @@ class _LogsPageState extends State<LogsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const SysAppBar(
-        title: Text('日志'),
-      ),
-      body: buildBody,
-      floatingActionButton: buildFloatingButtons,
+    return SettingsDetailScaffold(
+      title: const Text('日志'),
+      body: _buildBody(),
+      floatingActionButton: _buildFloatingButtons(),
     );
   }
 
-  Widget get buildBody {
+  Widget _buildBody() {
     if (_isLoading) {
       return const Center(
         child: LoadingIndicator(),
@@ -356,7 +354,7 @@ class _LogsPageState extends State<LogsPage> {
     );
   }
 
-  Widget get buildFloatingButtons {
+  Widget _buildFloatingButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
