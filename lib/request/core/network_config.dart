@@ -5,6 +5,7 @@ import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/services/network/proxy_utils.dart';
 import 'package:kazumi/services/network/public_network_policy.dart';
 import 'package:kazumi/services/network/system_proxy_service.dart';
+import 'package:kazumi/services/network/trusted_certificates.dart';
 import 'package:kazumi/services/storage/storage.dart';
 
 class NetworkConfig {
@@ -40,7 +41,8 @@ class NetworkConfig {
   }
 
   HttpClient createHttpClient({bool publicTargetsOnly = false}) {
-    final client = HttpClient();
+    final securityContext = TrustedCertificates.context;
+    final client = HttpClient(context: securityContext);
     if (publicTargetsOnly) {
       client.connectionFactory = (uri, proxyHost, proxyPort) async {
         if (proxyHost != null && proxyPort != null) {
@@ -55,6 +57,7 @@ class NetworkConfig {
           (socket) => SecureSocket.secure(
             socket,
             host: uri.host,
+            context: securityContext,
             onBadCertificate: allowBadCertificates ? (_) => true : null,
           ),
         );

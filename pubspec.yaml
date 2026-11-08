@@ -159,6 +159,7 @@ msix_config:
 flutter:
   uses-material-design: true
   assets:
+    - assets/certificates/SSLcom-TLS-Root-2022-RSA.pem
     - assets/images/
     - assets/plugins/
     - assets/shaders/
