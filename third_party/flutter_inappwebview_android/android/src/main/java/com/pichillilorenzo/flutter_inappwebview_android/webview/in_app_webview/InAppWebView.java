@@ -61,6 +61,8 @@ import androidx.annotation.RequiresApi;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
+import androidx.webkit.internal.IncompatibleApkWebViewProviderFactory;
+import androidx.webkit.internal.WebViewGlueCommunicator;
 
 import com.pichillilorenzo.flutter_inappwebview_android.InAppWebViewFlutterPlugin;
 import com.pichillilorenzo.flutter_inappwebview_android.R;
@@ -206,7 +208,17 @@ final public class InAppWebView extends InputAwareWebView implements InAppWebVie
     }
   }
 
+  @SuppressLint("RestrictedApi")
   public WebViewClient createWebViewClient(InAppBrowserDelegate inAppBrowserDelegate) {
+    // Framework-backed public feature checks can return true even when AndroidX
+    // could not load the provider's support-library glue. Compat error callbacks
+    // then initialize an unavailable converter and crash the whole process.
+    // Inspect the factory, not the lazy converter (whose failed initialization
+    // permanently poisons its class). Keep native framework error reporting.
+    if (WebViewGlueCommunicator.getFactory() instanceof IncompatibleApkWebViewProviderFactory) {
+      Log.w(LOG_TAG, "WebView provider has no AndroidX glue; using framework WebViewClient");
+      return new InAppWebViewClient(inAppBrowserDelegate);
+    }
     // bug https://bugs.chromium.org/p/chromium/issues/detail?id=925887
     PackageInfo packageInfo = WebViewCompat.getCurrentWebViewPackage(getContext());
     if (packageInfo == null) {
