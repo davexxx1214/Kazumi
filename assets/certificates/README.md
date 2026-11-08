@@ -17,6 +17,14 @@ HttpClient and the public-target SecureSocket connection path. It does not
 modify the device trust store, disable TLS validation, or pin AGE's rotating
 leaf certificate. This file contains no private key.
 
+Android WebView does not use Dart's SecurityContext. The identical certificate
+is also packaged as `android/app/src/main/res/raw/sslcom_tls_root_2022_rsa.pem`
+and added alongside system roots by `res/xml/network_security_config.xml`,
+referenced from the main Android manifest. TLS errors are still rejected; no
+SSL-error callback bypass is used. Existing HTTP rule support is preserved.
+Update both copies together; the regression test verifies their DER fingerprints
+and the Android resource/manifest wiring.
+
 When replacing or removing the root, verify the official certificate, review
 current CA trust status, and update the fingerprint regression test. Do not
 download trust roots dynamically at application startup.

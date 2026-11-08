@@ -38,6 +38,34 @@ void main() {
     },
   );
 
+  test('Android WebView packages the same root with system trust retained', () {
+    final pem = File(
+      'android/app/src/main/res/raw/sslcom_tls_root_2022_rsa.pem',
+    ).readAsStringSync();
+    final der = base64.decode(
+      pem
+          .replaceAll('-----BEGIN CERTIFICATE-----', '')
+          .replaceAll('-----END CERTIFICATE-----', '')
+          .replaceAll(RegExp(r'\s'), ''),
+    );
+    expect(
+      sha256.convert(der).toString(),
+      '8faf7d2e2cb4709bb8e0b33666bf75a5dd45b5de480f8ea8d4bfe6bebc17f2ed',
+    );
+    final config = File(
+      'android/app/src/main/res/xml/network_security_config.xml',
+    ).readAsStringSync();
+    expect(config, contains('<certificates src="system" />'));
+    expect(
+      config,
+      contains('<certificates src="@raw/sslcom_tls_root_2022_rsa" />'),
+    );
+    expect(
+      File('android/app/src/main/AndroidManifest.xml').readAsStringSync(),
+      contains('android:networkSecurityConfig="@xml/network_security_config"'),
+    );
+  });
+
   // Opt in to live endpoint checks; regular tests remain independent of AGE
   // availability. Run with --dart-define=RUN_TLS_NETWORK_TESTS=true.
   const networkTests = bool.fromEnvironment('RUN_TLS_NETWORK_TESTS');

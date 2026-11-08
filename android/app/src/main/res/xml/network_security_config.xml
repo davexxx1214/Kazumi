@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Match the Dart client's supplemental public root for older TV stores.
+         Keep platform roots and normal TLS chain/hostname validation. -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/sslcom_tls_root_2022_rsa" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
